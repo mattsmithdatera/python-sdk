@@ -24,6 +24,7 @@ Usage:
         --volperf  <TOTAL_IOPS_MAX> <TOTAL_BANDWIDTH_MAX>
         --clone <APP_INSTANCE_NAME>
         --tenant <TENANT_NAME>
+        --version
 
     'basename' corresponds to the app_instance
     'size' is interpreted as number of GB.
@@ -42,7 +43,7 @@ Usage:
     'volperf' volume-level total max iops and bandwidth
     'clone' clone a specified application instance
     'tenant' uses the specified tenant name for create application instances
-
+    'version' specifies the current dhutil version and supported API version
 """
 import sys
 import os
@@ -59,7 +60,14 @@ NUMREPLICAS = 3
 DISK_BY_PATH = "/dev/disk/by-path"
 SYS_BLOCK = "/sys/block"
 CLONE_AI_LIST = []
+try:
+    VER = subprocess.check_output(["git", "describe", "--always"])
+except subprocess.CalledProcessError:
+    VER = "unknown"
 API_VER = "2.1"
+
+SUCCESS = 0
+FAILURE = 1
 
 
 def usage():
@@ -106,7 +114,13 @@ Usage:
 
 """)
 
-    exit(1)
+    sys.exit(FAILURE)
+
+
+def version():
+    print("dhutil version:", VER)
+    print("API version:", API_VER)
+    sys.exit(0)
 
 #
 # Create Volume within a storage instance.
@@ -425,13 +439,13 @@ def mpmap(api, args, tenant):
             if not dm:
                 print("No DM for sd: {}. Please make sure that multipath "
                       "service is running. Then cleanall and retry".format(sd))
-                sys.exit(-1)
+                sys.exit(FAILURE)
             mapper = dm_to_mapper(dm)
             if not mapper:
                 print("No mapper entry for dm: {}. Please make sure that "
                       "multipath service is running. Then cleanall and "
                       "retry".format(dm))
-                sys.exit(-1)
+                sys.exit(FAILURE)
             dmpath = mapper_to_dmpath(mapper)
 
             if api.system.get()['sw_version'].startswith(API_VER):
@@ -551,7 +565,7 @@ def clone_an_app_instance(api, args):
     if api.system.get()['sw_version'].startswith(API_VER):
         print("cloning via dhutil is not yet supported in", api.system.get()[
             'sw_version'])
-        sys.exit(-1)
+        sys.exit(FAILURE)
     else:
         for app_instance in api.app_instances.list():
             if app_instance["name"].startswith(args.basename):
@@ -576,7 +590,7 @@ def clone_an_app_instance(api, args):
                                     'storage_instances'][si]['op_state'] !=
                                         "available"):
                                     print("error copying acl_policies")
-                                    sys.exit(1)
+                                    sys.exit(FAILURE)
                                 # add initiator groups
                             # copy performance policies
                             if 'performance_policy' in volume_map[si][vol]:
@@ -605,7 +619,7 @@ def clone_an_app_instance(api, args):
                                     'storage_instances'][si]['op_state'] !=
                                         "available"):
                                     print("error copying performance_policies")
-                                    sys.exit(1)
+                                    sys.exit(FAILURE)
                             # copy snapshot policies
                             if 'snapshot_policy' in volume_map[si][vol]:
                                 copy_snapshot_policy(
@@ -615,7 +629,7 @@ def clone_an_app_instance(api, args):
                                     'storage_instances'][si]['op_state'] !=
                                         "available"):
                                     print("error copying snapshot_policies")
-                                    sys.exit(1)
+                                    sys.exit(FAILURE)
                             print("cloned", app_instance['name'], "to",
                                   new_app_instance['name'])
                             state = api.app_instances.get(
@@ -661,7 +675,7 @@ def nocreds():
     print("Credentials needed of form 'user:password:IPAddr'")
     print("supplied in DTSCREDS environment variable")
     print()
-    sys.exit(-1)
+    sys.exit(FAILURE)
 
 
 def chk_args(args):
@@ -739,7 +753,7 @@ def iscsiadm_chk():
         print("      RH/CentOS: 'yum install iscsi-initiator-utils'")
         print("      Ubuntu:    'apt-get install open-iscsi'")
         print()
-        sys.exit(1)
+        sys.exit(FAILURE)
 
 
 def mpath_chk():
@@ -752,7 +766,7 @@ def mpath_chk():
         print("      RH/CentOS: 'yum install device-mapper-multipath'")
         print("      Ubuntu:    'apt-get install multipath-tools'")
         print()
-        sys.exit(1)
+        sys.exit(FAILURE)
 
 
 def lsscsi_chk():
@@ -765,7 +779,7 @@ def lsscsi_chk():
         print("      RH/CentOS: 'yum install lsscsi'")
         print("      Ubuntu:    'apt-get install lsscsi'")
         print()
-        sys.exit(1)
+        sys.exit(FAILURE)
 
 
 def dbck():
@@ -775,11 +789,11 @@ def dbck():
             "grep sysfs /proc/mounts | grep ro", shell=True)
         try:
             subprocess.call("mount -o rw,remount sysfs /sys")
-            sys.exit(0)
+            sys.exit(SUCCESS)
         except subprocess.CalledProcessError:
             print("Encountered https://github.com/docker/docker/issues/7101")
             print("and cannot remount /sys.  Need to be root?")
-            sys.exit(1)
+            sys.exit(FAILURE)
     except subprocess.CalledProcessError:
         # sysfs is not mounted 'ro'
         pass
@@ -793,7 +807,7 @@ def op_state_poller(instance):
             count = count + 1
         if count > 9:
             print(instance['name'] + " did not become available in 10s")
-            sys.exit(-1)
+            sys.exit(FAILURE)
         break
 
 
@@ -828,7 +842,13 @@ def main():
     parser.add_argument('--tenant', action="store",
                         help='creates tenant with given name. If exists, uses '
                              'that tenant')
+    parser.add_argument('--version', action="store_true",
+                        help='Specifies the current dhutil version and '
+                             'supported API version')
     args = parser.parse_args()
+
+    if args.version:
+        version()
 
     if (len(sys.argv) < 2):
         usage()
@@ -847,7 +867,7 @@ def main():
 
     if basename and len(basename) < 3:
         print("Validation Error:  %s : must be at least 3 chars" % basename)
-        sys.exit(-1)
+        sys.exit(FAILURE)
 
     # Make sure args make sense
     chk_args(args)
@@ -871,17 +891,17 @@ def main():
         unmount(basename)
         target_logout_and_node_cleanup(api, host, basename)
         clean_all(api, basename, args)
-        sys.exit(0)
+        sys.exit(SUCCESS)
 
     if args.showall:
         show_all(api)
         if args.mpmap:
             mpmap(api, args, tenant)
-        sys.exit(0)
+        sys.exit(SUCCESS)
 
     if args.mpmap and not args.count:
         mpmap(api, args, tenant)
-        sys.exit(0)
+        sys.exit(SUCCESS)
 
     cmd = "grep '^InitiatorName' /etc/iscsi/initiatorname.iscsi"
     cmd = cmd + " | sed -e 's/InitiatorName=//'"
@@ -949,7 +969,7 @@ def main():
                 run_cmd("lsscsi -t")
         else:
             print(args.template, " : does not exist!")
-            sys.exit(-1)
+            sys.exit(FAILURE)
     elif args.count:
         #
         # Create N app_instances, storage_instance, and add initiator
@@ -1044,7 +1064,8 @@ def main():
         mntmap = mpmap(api, args, tenant)
         pool = mp.Pool()
         list(pool.imap_unordered(mkfs, mntmap))
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
