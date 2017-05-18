@@ -60,10 +60,7 @@ NUMREPLICAS = 3
 DISK_BY_PATH = "/dev/disk/by-path"
 SYS_BLOCK = "/sys/block"
 CLONE_AI_LIST = []
-try:
-    VER = subprocess.check_output(["git", "describe", "--always"])
-except subprocess.CalledProcessError:
-    VER = "unknown"
+VER = "1.2.0"
 API_VER = "2.1"
 
 SUCCESS = 0
