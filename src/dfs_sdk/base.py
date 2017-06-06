@@ -8,7 +8,7 @@ import sys
 from .exceptions import _ApiResponseError
 from .constants import PYTHON_3_0_0_HEXVERSION
 
-__copyright__ = "Copyright 2015, Datera, Inc."
+__copyright__ = "Copyright 2017, Datera, Inc."
 
 ###############################################################################
 

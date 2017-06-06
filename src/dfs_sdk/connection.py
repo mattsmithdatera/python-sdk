@@ -21,7 +21,7 @@ from .constants import PYTHON_2_7_0_HEXVERSION
 from .constants import PYTHON_2_7_9_HEXVERSION
 from .constants import PYTHON_3_0_0_HEXVERSION
 
-__copyright__ = "Copyright 2015, Datera, Inc."
+__copyright__ = "Copyright 2017, Datera, Inc."
 
 if sys.hexversion >= PYTHON_3_0_0_HEXVERSION:
     # Python 3

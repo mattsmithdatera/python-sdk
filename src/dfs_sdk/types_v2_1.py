@@ -12,7 +12,7 @@ from .base import MetricEndpoint as _MetricEndpoint
 from .base import Entity as _Entity
 from .base import MonitoringStatusEndpoint as _MonitoringStatusEndpoint
 
-__copyright__ = "Copyright 2016, Datera, Inc."
+__copyright__ = "Copyright 2017, Datera, Inc."
 
 
 ##################################################################

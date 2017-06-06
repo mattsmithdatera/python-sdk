@@ -6,7 +6,7 @@ from .connection import ApiConnection
 from .context import ApiContext
 from .types_v2_1 import RootEp
 
-__copyright__ = "Copyright 2016, Datera, Inc."
+__copyright__ = "Copyright 2017, Datera, Inc."
 
 
 API_VERSION = "v2.1"

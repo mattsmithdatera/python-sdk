@@ -1,7 +1,7 @@
 """
 Provides hard-coded values used in this package
 """
-__copyright__ = "Copyright 2015, Datera, Inc."
+__copyright__ = "Copyright 2017, Datera, Inc."
 
 REST_PORT = 7717
 REST_PORT_HTTPS = 7718

@@ -7,7 +7,7 @@ import logging
 
 from .constants import PYTHON_2_7_0_HEXVERSION
 
-__copyright__ = "Copyright 2015, Datera, Inc."
+__copyright__ = "Copyright 2017, Datera, Inc."
 
 
 LOG = logging.getLogger(__name__)

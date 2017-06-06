@@ -15,7 +15,7 @@ from .exceptions import ApiInternalError
 from .exceptions import ApiUnavailableError
 
 
-__copyright__ = "Copyright 2015, Datera, Inc."
+__copyright__ = "Copyright 2017, Datera, Inc."
 
 
 def get_api(hostname, username, password, version, tenant=None):

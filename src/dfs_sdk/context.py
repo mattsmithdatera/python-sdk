@@ -1,7 +1,7 @@
 """
 Provides the ApiContext class
 """
-__copyright__ = "Copyright 2015, Datera, Inc."
+__copyright__ = "Copyright 2017, Datera, Inc."
 
 
 class ApiContext(object):
