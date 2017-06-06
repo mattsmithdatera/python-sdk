@@ -253,6 +253,7 @@ class AccessNetworks(_Entity):
     def __init__(self, *args):
         super(AccessNetworks, self).__init__(*args)
 
+
 class AccessVip(_Entity):
 
     def __init__(self, *args):
@@ -1126,6 +1127,7 @@ class InitConfigEp(_StringEndpoint):
 
 class InitEp(_Endpoint):
     _name = 'init'
+
     def __init__(self, *args):
         super(InitEp, self).__init__(*args)
         self._set_subendpoint(InitConfigEp)
@@ -1146,7 +1148,8 @@ class RootEp(_Endpoint):
         self._set_subendpoint(AppTemplatesEp)
         self._set_subendpoint(InitiatorsEp)
         self._set_subendpoint(InitiatorGroupsEp)
-        self._set_subendpoint(AccessNetworkIpPoolEp) # To be remove, once access_network_ip_pools functionality is in place
+        # To be removed, once access_network_ip_pools functionality is in place
+        self._set_subendpoint(AccessNetworkIpPoolEp)
         self._set_subendpoint(AccessNetworkIpPoolsEp)
         self._set_subendpoint(StorageNodesEp)
         self._set_subendpoint(SystemEp)

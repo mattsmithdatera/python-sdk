@@ -1,13 +1,14 @@
 """
 Provides exceptions classes
 """
-__copyright__ = "Copyright 2015, Datera, Inc."
-
 import json
 import sys
 import logging
 
 from .constants import PYTHON_2_7_0_HEXVERSION
+
+__copyright__ = "Copyright 2015, Datera, Inc."
+
 
 LOG = logging.getLogger(__name__)
 if sys.hexversion >= PYTHON_2_7_0_HEXVERSION:

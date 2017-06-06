@@ -15,7 +15,7 @@ from .exceptions import ApiAuthError, ApiConnectionError, ApiTimeoutError
 from .exceptions import ApiInternalError, ApiNotFoundError
 from .exceptions import ApiInvalidRequestError, ApiConflictError
 from .exceptions import ApiValidationFailedError
-from .constants import REST_PORT, REST_PORT_HTTPS, DEFAULT_HTTP_TIMEOUT
+from .constants import REST_PORT, REST_PORT_HTTPS
 
 from .constants import PYTHON_2_7_0_HEXVERSION
 from .constants import PYTHON_2_7_9_HEXVERSION
@@ -63,7 +63,8 @@ def _with_authentication(method):
             kwargs_copy = dict(kwargs)
             return method(self, *args, **kwargs)
         except ApiAuthError as e:
-            if e.message == 'The key provided with the request does not correspond to a valid session.':
+            if e.message == ('The key provided with the request does not '
+                             'correspond to a valid session.'):
                 self._logger.debug("API auth error, so try to log in again...")
             else:
                 self._logger.warn("API auth error, so try to log in again...")

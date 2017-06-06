@@ -1,13 +1,13 @@
 """
 Provides the v2.1 DateraApi object
 """
-__copyright__ = "Copyright 2016, Datera, Inc."
-
-
 from .constants import DEFAULT_HTTP_TIMEOUT
 from .connection import ApiConnection
 from .context import ApiContext
 from .types_v2_1 import RootEp
+
+__copyright__ = "Copyright 2016, Datera, Inc."
+
 
 API_VERSION = "v2.1"
 

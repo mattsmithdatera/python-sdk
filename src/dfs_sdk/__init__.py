@@ -2,9 +2,6 @@
 Python package for interacting with the REST interface of a Datera
 storage cluster.
 """
-__copyright__ = "Copyright 2015, Datera, Inc."
-
-
 from .api_v2 import DateraApi
 from .api_v2_1 import DateraApi21
 from .exceptions import ApiError
@@ -16,6 +13,9 @@ from .exceptions import ApiConnectionError
 from .exceptions import ApiTimeoutError
 from .exceptions import ApiInternalError
 from .exceptions import ApiUnavailableError
+
+
+__copyright__ = "Copyright 2015, Datera, Inc."
 
 
 def get_api(hostname, username, password, version, tenant=None):

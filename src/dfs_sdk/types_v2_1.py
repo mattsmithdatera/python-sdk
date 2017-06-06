@@ -11,6 +11,7 @@ from .base import MetricCollectionEndpoint as _MetricCollectionEndpoint
 from .base import MetricEndpoint as _MetricEndpoint
 from .base import Entity as _Entity
 from .base import MonitoringStatusEndpoint as _MonitoringStatusEndpoint
+
 __copyright__ = "Copyright 2016, Datera, Inc."
 
 
@@ -56,6 +57,7 @@ class Tenant(_Entity):
 
     def __init__(self, *args):
         super(Tenant, self).__init__(*args)
+
 
 class AppTemplate(_Entity):
     """
@@ -110,6 +112,7 @@ class Users(_Entity):
     def __init__(self, *args):
         super(Users, self).__init__(*args)
         self._set_subendpoint(UsersRolesRefEp)
+
 
 class Roles(_Entity):
     """ get,list,modify methods for roles   """
@@ -256,6 +259,7 @@ class AccessNetworks(_Entity):
     def __init__(self, *args):
         super(AccessNetworks, self).__init__(*args)
 
+
 class AccessVip(_Entity):
 
     def __init__(self, *args):
@@ -293,6 +297,7 @@ class Network(_Entity):
         self._set_subendpoint(InternalNetworkEp)
         self._set_subendpoint(NetworkMappingEp)
 
+
 class Monitoring(_Entity):
 
     def __init__(self, *args):
@@ -300,11 +305,13 @@ class Monitoring(_Entity):
         self._set_subendpoint(PoliciesEp)
         self._set_subendpoint(DestinationsEp)
 
+
 class Policies(_Entity):
 
     def __init__(self, *args):
         super(Policies, self).__init__(*args)
         self._set_subendpoint(DefaultEp)
+
 
 class Destinations(_Entity):
 
@@ -312,16 +319,19 @@ class Destinations(_Entity):
         super(Destinations, self).__init__(*args)
         self._set_subendpoint(DefaultEp)
 
+
 class Default(_Entity):
 
     def __init__(self, *args):
         super(Default, self).__init__(*args)
+
 
 class Events(_Entity):
 
     def __init__(self, *args):
         super(Events, self).__init__(*args)
         self._set_subendpoint(UserEp)
+
 
 class Metrics(_Entity):
 
@@ -330,10 +340,12 @@ class Metrics(_Entity):
         self._set_subendpoint(IoEp)
         self._set_subendpoint(HwEp)
 
+
 class User(_Entity):
 
     def __init__(self, *args):
         super(User, self).__init__(*args)
+
 
 class System(_Entity):
 
@@ -348,12 +360,14 @@ class System(_Entity):
         self._set_subendpoint(StorageStatusEp)
         self._set_subendpoint(VolumeStatusEp)
         self._set_subendpoint(SnmpPolicyEp)
-        
+
+
 class SnmpPolicy(_Entity):
-   
+
     def __init__(self, *args):
         super(SnmpPolicy, self).__init__(*args)
         self._set_subendpoint(UsersEp)
+
 
 class AclPolicy(_Entity):
 
@@ -361,6 +375,7 @@ class AclPolicy(_Entity):
         super(AclPolicy, self).__init__(*args)
         self._set_subendpoint(AclPolicyInitiatorsRefEp)
         self._set_subendpoint(AclPolicyEpInitiatorGroupsRefEp)
+
 
 class AccessControl(_Entity):
 
@@ -425,7 +440,8 @@ class StorageStatus(_Entity):
 class VolumeStatus(_Entity):
     def __init__(self, *args):
         super(VolumeStatus, self).__init__(*args)
-        
+
+
 ###############################################################################
 # SNMP Endpoint classes
 
@@ -436,7 +452,7 @@ class SnmpPolicyEp(_SingletonEndpoint):
     def __init__(self, *args):
         super(SnmpPolicyEp, self).__init__(*args)
         self._set_subendpoint(UsersEp)
-        
+
 ###############################################################################
 #
 #  SingletonEndpoint classes
@@ -455,7 +471,8 @@ class SystemEp(_SingletonEndpoint):
         self._set_subendpoint(HealthStatusEp)
         self._set_subendpoint(StorageStatusEp)
         self._set_subendpoint(VolumeStatusEp)
-        self._set_subendpoint(SnmpPolicyEp)     
+        self._set_subendpoint(SnmpPolicyEp)
+
 
 class ApiEp(_SingletonEndpoint):
     _name = "api"
@@ -608,7 +625,6 @@ class TenantsEp(_ContainerEndpoint):
         super(TenantsEp, self).__init__(*args)
 
 
-
 class NetworkPathsEp(_ContainerEndpoint):
     _name = "network_paths"
     _entity_cls = NetworkPath
@@ -669,10 +685,11 @@ class AppInstancesEp(_ContainerEndpoint):
     def __init__(self, *args):
         super(AppInstancesEp, self).__init__(*args)
 
+
 class MonitoringEp(_SingletonEndpoint):
     """
         /monitoring
-	get() / list() / set()
+        get() / list() / set()
     """
     _name = "monitoring"
     _entity_cls = Monitoring
@@ -681,6 +698,7 @@ class MonitoringEp(_SingletonEndpoint):
         super(MonitoringEp, self).__init__(*args)
         self._set_subendpoint(PoliciesEp)
         self._set_subendpoint(DestinationsEp)
+
 
 class PoliciesEp(_SingletonEndpoint):
     """
@@ -694,6 +712,7 @@ class PoliciesEp(_SingletonEndpoint):
         super(PoliciesEp, self).__init__(*args)
         self._set_subendpoint(DefaultEp)
 
+
 class DefaultEp(_SingletonEndpoint):
     """
         /monitoring/destinations/default
@@ -704,6 +723,7 @@ class DefaultEp(_SingletonEndpoint):
 
     def __init__(self, *args):
         super(DefaultEp, self).__init__(*args)
+
 
 class DestinationsEp(_SingletonEndpoint):
     """
@@ -717,6 +737,7 @@ class DestinationsEp(_SingletonEndpoint):
         super(DestinationsEp, self).__init__(*args)
         self._set_subendpoint(DefaultEp)
 
+
 class EventsEp(_SingletonEndpoint):
     """
         /events
@@ -729,6 +750,7 @@ class EventsEp(_SingletonEndpoint):
         super(EventsEp, self).__init__(*args)
         self._set_subendpoint(UserEp)
 
+
 class UserEp(_ContainerEndpoint):
     """
         /monitoring/destinations/default
@@ -739,6 +761,7 @@ class UserEp(_ContainerEndpoint):
 
     def __init__(self, *args):
         super(UserEp, self).__init__(*args)
+
 
 class AppTemplatesEp(_ContainerEndpoint):
     """
@@ -838,6 +861,7 @@ class UsersEp(_ContainerEndpoint):
 
     def __init__(self, *args):
         super(UsersEp, self).__init__(*args)
+
 
 class RolesEp(_ContainerEndpoint):
     """      """
@@ -1300,7 +1324,6 @@ class IoEp(_ContainerEndpoint):
         self._set_subendpoint(Lat100WriteEp)
 
 
-
 class HwEp(_ContainerEndpoint):
     _name = "hw"
     _entity_cls = _Entity
@@ -1333,6 +1356,7 @@ class InitConfigEp(_StringEndpoint):
 
 class InitEp(_Endpoint):
     _name = 'init'
+
     def __init__(self, *args):
         super(InitEp, self).__init__(*args)
         self._set_subendpoint(InitConfigEp)
@@ -1353,7 +1377,8 @@ class RootEp(_Endpoint):
         self._set_subendpoint(AppTemplatesEp)
         self._set_subendpoint(InitiatorsEp)
         self._set_subendpoint(InitiatorGroupsEp)
-        self._set_subendpoint(AccessNetworkIpPoolEp) # To be remove, once access_network_ip_pools functionality is in place
+        # To be removed, once access_network_ip_pools functionality is in place
+        self._set_subendpoint(AccessNetworkIpPoolEp)
         self._set_subendpoint(AccessNetworkIpPoolsEp)
         self._set_subendpoint(StorageNodesEp)
         self._set_subendpoint(SystemEp)
