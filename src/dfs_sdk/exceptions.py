@@ -2,18 +2,12 @@
 Provides exceptions classes
 """
 import json
-import sys
-import logging
 
-from .constants import PYTHON_2_7_0_HEXVERSION
+from .logging import get_log
+
+LOG = get_log(__name__)
 
 __copyright__ = "Copyright 2017, Datera, Inc."
-
-
-LOG = logging.getLogger(__name__)
-if sys.hexversion >= PYTHON_2_7_0_HEXVERSION:
-    if not LOG.handlers:
-        LOG.addHandler(logging.NullHandler())
 
 
 class ApiError(Exception):
@@ -58,8 +52,11 @@ class _ApiResponseError(ApiError):
             js = json.loads(self.resp_data)
         except ValueError:
             LOG.error("Invalid json payload from API response!")
+        except TypeError as e:
+            LOG.error("Object recieved from API response was unexpected type "
+                      "error: {}, data: {}".format(e, self.resp_data))
 
-        for attr in js.iterkeys():
+        for attr in js.keys():
             # Intentionally overwrite exp.message since it's deprecated
             # str(exp) will use exp.args instead of exp.message
             if attr == 'message' or getattr(self, attr, None) is None:

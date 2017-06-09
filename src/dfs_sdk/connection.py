@@ -2,7 +2,6 @@
 Provides the ApiConnection class
 """
 import sys
-import logging
 import socket
 import json
 import threading
@@ -10,16 +9,17 @@ import functools
 import collections
 import ssl
 
+import six
+
 from .exceptions import ApiError
 from .exceptions import ApiAuthError, ApiConnectionError, ApiTimeoutError
 from .exceptions import ApiInternalError, ApiNotFoundError
 from .exceptions import ApiInvalidRequestError, ApiConflictError
 from .exceptions import ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
-
-from .constants import PYTHON_2_7_0_HEXVERSION
 from .constants import PYTHON_2_7_9_HEXVERSION
 from .constants import PYTHON_3_0_0_HEXVERSION
+from .logging import get_log
 
 __copyright__ = "Copyright 2017, Datera, Inc."
 
@@ -38,10 +38,7 @@ else:
     from httplib import HTTPSConnection  # noqa pylint: disable=import-error
     from urllib import quote as encode_url  # noqa pylint: disable=import-error
 
-LOG = logging.getLogger(__name__)
-if sys.hexversion >= PYTHON_2_7_0_HEXVERSION:
-    if not LOG.handlers:
-        LOG.addHandler(logging.NullHandler())
+LOG = get_log(__name__)
 
 
 def _with_authentication(method):
@@ -54,7 +51,7 @@ def _with_authentication(method):
         """ Call the original method with a re-login if needed """
         # if we haven't logged in yet, log in and then try the method:
         if not self._logged_in:
-            self._logger.debug("Log in to API...")
+            LOG.debug("Log in to API...")
             self.login()
             return method(self, *args, **kwargs)
         # already logged in, but retry if needed in case the key expires:
@@ -65,9 +62,9 @@ def _with_authentication(method):
         except ApiAuthError as e:
             if e.message == ('The key provided with the request does not '
                              'correspond to a valid session.'):
-                self._logger.debug("API auth error, so try to log in again...")
+                LOG.debug("API auth error, so try to log in again...")
             else:
-                self._logger.warn("API auth error, so try to log in again...")
+                LOG.warn("API auth error, so try to log in again...")
             self.login()
             return method(self, *args_copy, **kwargs_copy)
     return wrapper_method
@@ -95,10 +92,6 @@ class ApiConnection(object):
         Initialize a connection from a context object, which defines
         the hostname, username, password, etc.
         """
-        self._logger = logging.getLogger(__name__)
-        if not self._logger.handlers:
-            self._logger.addHandler(logging.NullHandler())
-
         self._context = context
         self._hostname = context.hostname
         self._username = context.username
@@ -187,12 +180,12 @@ class ApiConnection(object):
             conn = self._get_http_connection(self._secure,
                                              self._hostname, port,
                                              self._timeout)
-            self._logger.debug("REST send: method=" + str(method) +
-                               " hostname=" + str(self._hostname) +
-                               " port=" + str(port) +
-                               " urlpath=" + str(urlpath) +
-                               " headers=" + str(headers) +
-                               " body=" + str(body))
+            LOG.debug("REST send: method=" + str(method) +
+                      " hostname=" + str(self._hostname) +
+                      " port=" + str(port) +
+                      " urlpath=" + str(urlpath) +
+                      " headers=" + str(headers) +
+                      " body=" + str(body))
             conn.request(method, urlpath, body=body, headers=headers)
             resp = conn.getresponse()
             resp_status = resp.status     # e.g. 200
@@ -208,13 +201,13 @@ class ApiConnection(object):
                 exclass = ApiTimeoutError
             else:
                 exclass = ApiConnectionError
-            raise exclass, exclass(msg), sys.exc_info()[-1]
+            six.reraise(exclass, exclass(msg), sys.exc_info()[-1])
         # Debug log response:
         msg = "REST recv: status=" + str(resp_status) + \
               " reason=" + str(resp_reason) + \
               " headers=" + str(resp_headers) + \
               " data=\n" + str(resp_data)
-        self._logger.debug(msg)
+        LOG.debug(msg)
         # If API returned an error, raise exception:
         self._assert_response_successful(method, urlpath, body,
                                          resp_data, resp_status, resp_reason)

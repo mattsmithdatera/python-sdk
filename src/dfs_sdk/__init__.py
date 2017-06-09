@@ -13,9 +13,12 @@ from .exceptions import ApiConnectionError
 from .exceptions import ApiTimeoutError
 from .exceptions import ApiInternalError
 from .exceptions import ApiUnavailableError
+from .logging import setup_logging
 
 
 __copyright__ = "Copyright 2017, Datera, Inc."
+
+setup_logging()
 
 
 def get_api(hostname, username, password, version, tenant=None):
