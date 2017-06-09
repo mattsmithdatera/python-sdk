@@ -18,6 +18,18 @@ To install:
     cd python-sdk
     python setup.py install
 ```
+## Logging
+
+To set custom logging.json file
+```bash
+    export DSDK_LOG_CFG=your/log/location.json
+```
+
+To set logging to stdout.  The value can be any logging level supported by
+the python logging module (eg: debug, info, etc)
+```bash
+    export DSDK_LOG_STDOUT=debug
+```
 
 ## Managed Objects
 
@@ -27,35 +39,35 @@ with a corresponding application's requirements.
 The main storage objects are defined and differentiated as follows:
 
 ### Application Instance (AppInstance)
-	-	Corresponds to an application, service, etc.
-	-	Contains Zero or more Storage Instances
+    -    Corresponds to an application, service, etc.
+    -    Contains Zero or more Storage Instances
 
 ### Storage Instance
-	-	Corresponds to one set of storage requirements for a given AppInstance
-	-	ACL Policies, including IQN Initiators
-	-	Target IQN
-	-	Contains Zero or more Volumes
+    -    Corresponds to one set of storage requirements for a given AppInstance
+    -    ACL Policies, including IQN Initiators
+    -    Target IQN
+    -    Contains Zero or more Volumes
 
 ### Volumes
-	-	Corresponds to a single allocated storage object
-	-	Size (default unit is GB)
-	-	Replication Factor
-	-	Performance Policies (QoS for Bandwidth and IOPS)
-	-	Protection Policies (Snapshot scheduling)
+    -    Corresponds to a single allocated storage object
+    -    Size (default unit is GB)
+    -    Replication Factor
+    -    Performance Policies (QoS for Bandwidth and IOPS)
+    -    Protection Policies (Snapshot scheduling)
 
 Another way of viewing the managed object hierarchy is as follows:
 
-	app_instances:
-		- storage_instances:                 (1 or more per app_instance)
-			+ acl_policy                     (1 or more host initiators )
-			+ iqn                            (target IQN)
-			+ ips                            (target IPs)
-			+ volumes:                       (1 or more per storage_instance)
-				* name
-				* size
-				* replication
-				* performance_policy         (i.e. QoS)
-				* protection_policy          (i.e. Snapshot schedules)
+    app_instances:
+        - storage_instances:                 (1 or more per app_instance)
+            + acl_policy                     (1 or more host initiators )
+            + iqn                            (target IQN)
+            + ips                            (target IPs)
+            + volumes:                       (1 or more per storage_instance)
+                * name
+                * size
+                * replication
+                * performance_policy         (i.e. QoS)
+                * protection_policy          (i.e. Snapshot schedules)
 
 
 ## Endpoints
@@ -81,8 +93,8 @@ This Python SDK serves as a wrapper around the raw HTTP layer.
 The Datera module is named **dfs_sdk**, and the main entry point is called __DateraApi__.
 Obtaining an object handle can be done as follows:
 ```python
-		from dfs_sdk import DateraApi
-		[...]
+        from dfs_sdk import DateraApi
+        [...]
         api = DateraApi(username=user, password=password, hostname=ipaddr)
 ```
 
@@ -100,7 +112,7 @@ Common methods for all objects include **create(), set(), delete(), list()**
 + Looping through objects can be done via **list()**:
 ```python
         for ai in api.app_instances.list():
-		    print "AppInstance: ", ai
+            print "AppInstance: ", ai
 ```
 + To set a given **app_instance** into an _offline_ state:
 ```python
@@ -134,13 +146,13 @@ and to perform the host-side iscsi scan and login:
           dhutil --basename mongodev --cleanall
 ```
 Note that steps 1 and 3 could be combined as follows:
-   ```bash
+```bash
           dhutil --basename mongodev --count 5 --size 10 --mkfs --dirprefix /mnt --chown mongodb:mongodb
-   ```
+```
 Or a corresponding "app_template" could be used, if available:
-   ```bash
+```bash
           dhutil --basename mongodev --count 5 --template mongodb ...
-   ```
+```
 #### Caveats
 - **dhutil** presumes a 'singleton' model, whereby an app_instance
     is created with a single storage_instance with a single volume.
