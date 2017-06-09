@@ -1,3 +1,5 @@
+six
+
 # Tests only
 pytest
 mock
