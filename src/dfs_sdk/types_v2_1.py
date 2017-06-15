@@ -340,6 +340,32 @@ class Events(_Entity):
     def __init__(self, *args):
         super(Events, self).__init__(*args)
         self._set_subendpoint(UserEp)
+        self._set_subendpoint(Event_systemEp)
+        self._set_subendpoint(InternalEp)
+
+
+class User(_Entity):
+
+    def __init__(self, *args):
+        super(User, self).__init__(*args)
+
+
+class Event_system(_Entity):
+
+    def __init__(self, *args):
+        super(Event_system, self).__init__(*args)
+
+
+class Internal(_Entity):
+
+    def __init__(self, *args):
+        super(Internal, self).__init__(*args)
+
+
+class Alerts(_Entity):
+
+    def __init__(self, *args):
+        super(Alerts, self).__init__(*args)
 
 
 class Metrics(_Entity):
@@ -348,12 +374,6 @@ class Metrics(_Entity):
         super(Metrics, self).__init__(*args)
         self._set_subendpoint(IoEp)
         self._set_subendpoint(HwEp)
-
-
-class User(_Entity):
-
-    def __init__(self, *args):
-        super(User, self).__init__(*args)
 
 
 class System(_Entity):
@@ -758,18 +778,56 @@ class EventsEp(_SingletonEndpoint):
     def __init__(self, *args):
         super(EventsEp, self).__init__(*args)
         self._set_subendpoint(UserEp)
+        self._set_subendpoint(Event_systemEp)
+        self._set_subendpoint(InternalEp)
 
 
-class UserEp(_ContainerEndpoint):
+class UserEp(_ListEndpoint):
     """
-        /monitoring/destinations/default
-        get() / list() / set()
+        /events/users
+        get() / list()
     """
     _name = "user"
     _entity_cls = Events
 
     def __init__(self, *args):
         super(UserEp, self).__init__(*args)
+
+
+class Event_systemEp(_ListEndpoint):
+    """
+        /events/system
+        get() / list()
+    """
+    _name = "system"
+    _entity_cls = Events
+
+    def __init__(self, *args):
+        super(Event_systemEp, self).__init__(*args)
+
+
+class InternalEp(_ListEndpoint):
+    """
+        /events/internal
+        get() / list()
+    """
+    _name = "internal"
+    _entity_cls = Events
+
+    def __init__(self, *args):
+        super(InternalEp, self).__init__(*args)
+
+
+class AlertsEp(_ContainerEndpoint):
+    """
+        /alerts
+        get() / list()
+    """
+    _name = "alerts"
+    _entity_cls = Alerts
+
+    def __init__(self, *args):
+        super(AlertsEp, self).__init__(*args)
 
 
 class AppTemplatesEp(_ContainerEndpoint):
@@ -1412,6 +1470,7 @@ class RootEp(_Endpoint):
         self._set_subendpoint(InitEp)
         self._set_subendpoint(TenantsEp)
         self._set_subendpoint(EventsEp)
+        self._set_subendpoint(AlertsEp)
         self._set_subendpoint(MetricsEp)
 
 ###############################################################################
