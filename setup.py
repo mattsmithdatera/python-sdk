@@ -11,6 +11,7 @@ setup(
     author_email='support@datera.io',
     packages=['dfs_sdk'],
     package_dir={'': 'src'},
+    package_data={'dfs_sdk': ['logging.json']},
     include_package_data=True,
     install_requires=[],
     scripts=['utils/dhutil'],
