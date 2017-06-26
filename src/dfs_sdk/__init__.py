@@ -13,7 +13,7 @@ from .exceptions import ApiConnectionError
 from .exceptions import ApiTimeoutError
 from .exceptions import ApiInternalError
 from .exceptions import ApiUnavailableError
-from .logging import setup_logging
+from .dlogging import setup_logging
 
 
 __copyright__ = "Copyright 2017, Datera, Inc."

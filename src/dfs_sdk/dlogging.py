@@ -21,7 +21,6 @@ DEFAULT_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 
 def get_log(name):
-    import logging
     log = logging.getLogger(name)
     if sys.hexversion >= PYTHON_2_7_0_HEXVERSION:
         if not log.handlers:

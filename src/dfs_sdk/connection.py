@@ -19,7 +19,7 @@ from .exceptions import ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
 from .constants import PYTHON_2_7_9_HEXVERSION
 from .constants import PYTHON_3_0_0_HEXVERSION
-from .logging import get_log
+from .dlogging import get_log
 
 __copyright__ = "Copyright 2017, Datera, Inc."
 

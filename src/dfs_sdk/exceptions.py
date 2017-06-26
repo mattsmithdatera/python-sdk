@@ -3,7 +3,7 @@ Provides exceptions classes
 """
 import json
 
-from .logging import get_log
+from .dlogging import get_log
 
 LOG = get_log(__name__)
 
