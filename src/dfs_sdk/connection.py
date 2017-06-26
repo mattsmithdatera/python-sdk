@@ -19,6 +19,7 @@ from .exceptions import ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
 from .constants import PYTHON_2_7_9_HEXVERSION
 from .constants import PYTHON_3_0_0_HEXVERSION
+from .constants import VERSION
 from .dlogging import get_log
 
 __copyright__ = "Copyright 2017, Datera, Inc."
@@ -86,6 +87,7 @@ class ApiConnection(object):
     handles authentication.
     Its methods raise ApiError (or its subclasses) when things go wrong
     """
+    HEADER_DATA = {'Datera-Driver': 'Python-SDK-{}'.format(VERSION)}
 
     def __init__(self, context):
         """
@@ -170,7 +172,9 @@ class ApiConnection(object):
                 count += 1
 
         if headers is None:
-            headers = {}
+            headers = self.HEADER_DATA
+        else:
+            headers.update(self.HEADER_DATA)
 
         try:
             if self._secure:

@@ -3,6 +3,15 @@ Provides hard-coded values used in this package
 """
 __copyright__ = "Copyright 2017, Datera, Inc."
 
+VERSION = "1.1.1"
+
+VERSION_HISTORY = """
+Version History:
+    1.1.0 -- Initial Version
+    1.1.1 -- Metadata Endpoint, Pep8 cleanup, Logging revamp
+             Python 3 compatibility, Versioning and Version Headers
+"""
+
 REST_PORT = 7717
 REST_PORT_HTTPS = 7718
 
