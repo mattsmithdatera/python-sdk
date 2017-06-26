@@ -9,6 +9,7 @@ from .base import ListEndpoint as _ListEndpoint
 from .base import StringEndpoint as _StringEndpoint
 from .base import MetricCollectionEndpoint as _MetricCollectionEndpoint
 from .base import MetricEndpoint as _MetricEndpoint
+from .base import KeyValueEndpoint as _KeyValueEndpoint
 from .base import Entity as _Entity
 from .base import MonitoringStatusEndpoint as _MonitoringStatusEndpoint
 
@@ -51,6 +52,7 @@ class AppInstance(_Entity):
         self._set_subendpoint(StorageInstancesEp)
         self._set_subendpoint(SnapshotPoliciesEp)
         self._set_subendpoint(SnapshotsEp)
+        self._set_subendpoint(MetadataEp)
 
 
 class Tenant(_Entity):
@@ -104,6 +106,12 @@ class InitiatorGroup(_Entity):
     def __init__(self, *args):
         super(InitiatorGroup, self).__init__(*args)
         self._set_subendpoint(InitiatorGroupMembersRefEp)
+
+
+class Metadata(_Entity):
+
+    def __init__(self, *args):
+        super(Metadata, self).__init__(*args)
 
 
 class Users(_Entity):
@@ -194,6 +202,7 @@ class StorageInstance(_Entity):
         # To be removed once we have acl_policy back
         self._set_subendpoint(AccessControlEp)
         self._set_subendpoint(StorageInstanceMetricsEp)
+        self._set_subendpoint(MetadataEp)
 
 
 class StorageTemplate(_Entity):
@@ -1289,6 +1298,16 @@ class CpuUsageEp(_MetricEndpoint):
 
 
 ###############################################################################
+
+class MetadataEp(_KeyValueEndpoint):
+    _name = "metadata"
+    _entity_cls = Metadata
+
+    def __init__(self, *args):
+        super(MetadataEp, self).__init__(*args)
+
+###############################################################################
+
 
 class MetricsEp(_SingletonEndpoint):
     _name = "metrics"

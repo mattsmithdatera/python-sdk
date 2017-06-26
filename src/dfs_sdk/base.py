@@ -349,6 +349,20 @@ class SingletonEndpoint(Endpoint):
             raise
 
 
+class KeyValueEndpoint(Endpoint):
+    """ Returns a map-like object of the key-value items in the endpoint
+    """
+    def get(self):
+        return self._connection.read_endpoint(self._path)
+
+    def set(self, **params):
+        """
+        Updates the key-values provided
+        """
+        data = self._connection.update_endpoint(self._path, params)
+        return self._new_contained_entity(data)
+
+
 class MetricCollectionEndpoint(ListEndpoint):
     """ Returns a list of dictionaries of available metrics
         e.g. /system/metrics
