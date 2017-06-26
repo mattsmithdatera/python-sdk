@@ -2,8 +2,8 @@
 Python package for interacting with the REST interface of a Datera
 storage cluster.
 """
-from .api_v2 import DateraApi
-from .api_v2_1 import DateraApi21
+from .api import DateraApi
+from .api import DateraApi21
 from .exceptions import ApiError
 from .exceptions import ApiAuthError
 from .exceptions import ApiInvalidRequestError

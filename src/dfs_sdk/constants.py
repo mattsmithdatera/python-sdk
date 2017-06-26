@@ -11,6 +11,7 @@ Version History:
     1.1.1 -- Metadata Endpoint, Pep8 cleanup, Logging revamp
              Python 3 compatibility, Versioning and Version Headers,
     1.1.2 -- User, Event_system, Internal, Alerts Endpoints/Entities
+    1.2.0 -- v2.2 support, API module refactor
 """
 
 REST_PORT = 7717
