@@ -18,7 +18,7 @@ DEFAULT_API_VERSION = "v2.1"
 # different api versions with little to no difference in this class
 def _api_getter(base):
 
-    class Base(base):
+    class _DateraBaseApi(base):
         """
         Use this object to talk to the REST interface of a Datera cluster
         """
@@ -59,7 +59,7 @@ def _api_getter(base):
                     name=username, password=password)
 
             # Initialize sub-endpoints:
-            super(Base, self).__init__(self._context, None)
+            super(_DateraBaseApi, self).__init__(self._context, None)
 
         def _create_context(self, hostname, username=None, password=None,
                             tenant=None, timeout=None, secure=True,
@@ -92,7 +92,7 @@ def _api_getter(base):
             """
             return ApiConnection(context)
 
-    return Base
+    return _DateraBaseApi
 
 
 class DateraApi(_api_getter(RootEp2)):
