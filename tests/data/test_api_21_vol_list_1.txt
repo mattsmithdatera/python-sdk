@@ -1,0 +1,72 @@
+{
+  "tenant": "/root",
+  "path": "/app_instances/83f909de-4597-41f4-9c89-acc3d567eae9/storage_instances",
+  "version": "v2.1",
+  "data": [
+    {
+      "health": "ok",
+      "path": "/app_instances/83f909de-4597-41f4-9c89-acc3d567eae9/storage_instances/storage-1",
+      "name": "storage-1",
+      "admin_state": "online",
+      "op_state": "available",
+      "volumes": [
+        {
+          "path": "/app_instances/83f909de-4597-41f4-9c89-acc3d567eae9/storage_instances/storage-1/volumes/volume-1",
+          "name": "volume-1",
+          "replica_count": 1,
+          "uuid": "3baa0797-6a69-4db1-9cd8-e79e0b7e5cfc",
+          "size": 20,
+          "capacity_in_use": 0,
+          "snapshot_policies": [],
+          "snapshots": [],
+          "placement_mode": "hybrid",
+          "op_state": "available",
+          "active_storage_nodes": [
+            {
+              "path": "/storage_nodes/f25343e4-6392-4978-b919-42f9621c2f1e"
+            }
+          ],
+          "health": "ok",
+          "deployment_state": "deployed"
+        }
+      ],
+      "access_control_mode": "deny_all",
+      "acl_policy": {
+        "path": "/app_instances/83f909de-4597-41f4-9c89-acc3d567eae9/storage_instances/storage-1/acl_policy",
+        "initiators": [],
+        "initiator_groups": []
+      },
+      "ip_pool": {
+        "path": "/access_network_ip_pools/default",
+        "resolved_path": "/access_network_ip_pools/default",
+        "resolved_tenant": "/root"
+      },
+      "access": {
+        "path": "/app_instances/83f909de-4597-41f4-9c89-acc3d567eae9/storage_instances/storage-1/access",
+        "ips": [
+          "172.28.41.43",
+          "172.29.41.56"
+        ],
+        "iqn": "iqn.2013-05.com.daterainc:tc:01:sn:e03215346d0d5698"
+      },
+      "auth": {
+        "path": "/app_instances/83f909de-4597-41f4-9c89-acc3d567eae9/storage_instances/storage-1/auth",
+        "type": "none",
+        "initiator_user_name": "",
+        "initiator_pswd": "(hidden)",
+        "target_user_name": "",
+        "target_pswd": "(hidden)"
+      },
+      "active_initiators": [],
+      "active_storage_nodes": [
+        {
+          "path": "/storage_nodes/f25343e4-6392-4978-b919-42f9621c2f1e"
+        }
+      ],
+      "uuid": "818c7a9b-47b1-4767-92b1-e82df84bb7cb"
+    }
+  ],
+  "metadata": {
+    "total": 1
+  }
+}

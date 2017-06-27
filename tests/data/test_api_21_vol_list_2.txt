@@ -1,0 +1,29 @@
+{
+  "tenant": "/root",
+  "path": "/app_instances/83f909de-4597-41f4-9c89-acc3d567eae9/storage_instances/storage-1/volumes",
+  "version": "v2.1",
+  "data": [
+    {
+      "path": "/app_instances/83f909de-4597-41f4-9c89-acc3d567eae9/storage_instances/storage-1/volumes/volume-1",
+      "name": "volume-1",
+      "replica_count": 1,
+      "uuid": "3baa0797-6a69-4db1-9cd8-e79e0b7e5cfc",
+      "size": 20,
+      "capacity_in_use": 0,
+      "snapshot_policies": [],
+      "snapshots": [],
+      "placement_mode": "hybrid",
+      "op_state": "available",
+      "active_storage_nodes": [
+        {
+          "path": "/storage_nodes/f25343e4-6392-4978-b919-42f9621c2f1e"
+        }
+      ],
+      "health": "ok",
+      "deployment_state": "deployed"
+    }
+  ],
+  "metadata": {
+    "total": 1
+  }
+}
