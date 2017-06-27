@@ -2,8 +2,13 @@
 Python package for interacting with the REST interface of a Datera
 storage cluster.
 """
-from .api import DateraApi
-from .api import DateraApi21
+# Renaming imports to prevent easy top-level importing
+# We want folks to use get_api(), not these object directly
+from .api import DateraApi as _DateraApi
+from .api import DateraApi21 as _DateraApi21
+from .api import DateraApi22 as _DateraApi22
+
+from .constants import API_VERSIONS
 from .exceptions import ApiError
 from .exceptions import ApiAuthError
 from .exceptions import ApiInvalidRequestError
@@ -20,27 +25,34 @@ __copyright__ = "Copyright 2017, Datera, Inc."
 
 setup_logging()
 
+# TODO(mss): generate this from version list imported from constants
+VERSION_MAP = {"v2": _DateraApi,
+               "v2.1": _DateraApi21,
+               "v2.2": _DateraApi22}
+
 
 def get_api(hostname, username, password, version, tenant=None):
-    """
+    """Main entrypoint into the SDK
+
     Returns a DateraApi object
     Parameters:
       hostname (str) - The hostname or VIP
       username (str) - e.g. "admin"
       password (str)
-      version (str) - must be "v2" or "v2.1"
+      version (str) - must be in constants.API_VERSIONS
     Optional parameters:
-      tenant (str) - Tenant, for v2.1 API only
+      tenant (str) - Tenant, for v2.1+ API only
     """
-    if version == "v2":
-        if tenant:
-            raise ValueError("API version v2 does not support multi-tenancy")
-        return DateraApi(hostname, username, password)
-    elif version == "v2.1":
-        return DateraApi21(hostname, username, password, tenant=tenant)
-    else:
-        raise NotImplementedError("Unsupported API version: " + repr(version))
-
+    if version not in API_VERSIONS:
+        raise ValueError(
+            "API version {} unsupported by SDK at this time. Supported "
+            "versions: {}".format(version, API_VERSIONS))
+    if version == "v2" and tenant:
+        raise ValueError("API version v2 does not support multi-tenancy")
+    return VERSION_MAP[version](hostname,
+                                username=username,
+                                password=password,
+                                tenant=tenant)
 
 __all__ = ['get_api',
            'ApiError',
@@ -51,6 +63,4 @@ __all__ = ['get_api',
            'ApiConnectionError',
            'ApiTimeoutError',
            'ApiInternalError',
-           'ApiUnavailableError',
-           'DateraApi',
-           'DateraApi21']
+           'ApiUnavailableError']

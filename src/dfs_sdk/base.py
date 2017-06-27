@@ -83,6 +83,7 @@ class Entity(collections.Mapping):
 
     ######
 
+    # TODO(mss): Allow passing string, then determine the endpoint version
     def _set_subendpoint(self, klass):
         """ Create a sub-endpoint of the given endpoint type """
         assert(issubclass(klass, Endpoint))
@@ -152,6 +153,7 @@ class Endpoint(object):
         else:
             return repr(self)
 
+    # TODO(mss): Allow passing string, then determine the endpoint version
     def _set_subendpoint(self, klass):
         """ Create a sub-endpoint of the given endpoint type """
         assert(issubclass(klass, Endpoint))
