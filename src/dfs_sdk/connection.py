@@ -226,7 +226,7 @@ class ApiConnection(object):
             send_data = {"name": self._username, "password": self._password}
         body = json.dumps(send_data)
 
-        headers = dict()
+        headers = {}
         headers["content-type"] = "application/json; charset=utf-8"
         urlpath = "/" + self._version + "/login"
         method = "PUT"

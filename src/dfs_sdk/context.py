@@ -21,6 +21,7 @@ class ApiContext(object):
         self.timeout = None
         self.secure = None
 
+        self.reader = None
         self.on_entity_create_hooks = []
         self.on_entity_delete_hooks = []
         self.prepare_entity_hooks = []

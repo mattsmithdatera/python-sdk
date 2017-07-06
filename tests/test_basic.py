@@ -107,3 +107,12 @@ def test_api_21_vol_list(mock_api_21):
     vols = si.volumes.list()
     assert len(vols) == 1
     assert vols[0]['name'] == 'volume-1'
+
+
+def test_schema():
+    from dfs_sdk.schema.reader import Reader21
+    import requests
+    data = requests.get("http://172.19.1.41:7717/v2.1/api").json()
+    r = Reader21(data)
+    for endpoint in r._endpoints:
+        print(r._normalize(endpoint))

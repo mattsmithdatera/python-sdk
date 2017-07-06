@@ -5,7 +5,10 @@ Base classes for endpoint and entitys
 import json
 import collections
 import sys
+import os
 from .exceptions import _ApiResponseError
+from .exceptions import SdkEntityNotFound
+from .exceptions import SdkEndpointNotFound
 from .constants import PYTHON_3_0_0_HEXVERSION
 
 __copyright__ = "Copyright 2017, Datera, Inc."
@@ -20,6 +23,15 @@ def _is_stringtype(value):
         return isinstance(value, str)
 
 
+def get_init_func(klass):
+    def paste_init(self, *args):
+        super(klass, self).__init__(*args)
+    return paste_init
+
+
+def snake_to_camel(name):
+    parts = name.split('_')
+    return "".join(x.title() for x in parts)
 ###############################################################################
 
 
@@ -29,28 +41,40 @@ class Entity(collections.Mapping):
 
     This is a mapping, so its attributes can be accessed just like a dict
     """
+    _name = "base_entity"
 
-    def __init__(self, context, data):
+    def __init__(self, context, data, name):
         """
         Parameters:
           context (dateraapi.context.ApiConnection)
           data (dict)
         """
-        self._context = context
+        self.context = context
         self._connection = context.connection
         self._data = data
+        self._reader = context.reader
+        self._version = context.version
 
         # Set self._path:
         if 'path' in data:
             self._path = data['path']
+            self._type = self._reader.get_entity(os.path.dirname(self._path))
+            if not self._type:
+                raise SdkEntityNotFound(
+                    "/api endpoint did not contain entity: {} ".format(
+                        os.path.dirname(self._path)))
         else:
             self._path = None
+            self._type = None
         if 'tenant' in data:
             self._tenant = data['tenant']
         else:
             self._tenant = None
 
-        # In Python 2, dicts have has_key(); it was remove in Python 3.
+        if name:
+            self._name = name
+
+        # In Python 2, dicts have has_key(); it was removed in Python 3.
         # So, do the same thing here:
         if sys.hexversion < PYTHON_3_0_0_HEXVERSION:
             self.has_key = self._has_key
@@ -71,15 +95,48 @@ class Entity(collections.Mapping):
         """ True if this entity contains the given key, else False """
         return key in self
 
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
+
+    def items(self):
+        return self._data.items()
+
     ######
 
     def __str__(self):
         """ A human-readable representation of this entity """
-        return json.dumps(self._data, encoding='utf-8', indent=4)
+        try:
+            # Python 2
+            return json.dumps(self._data, encoding='utf-8', indent=4)
+        except TypeError:
+            # Python 3
+            return json.dumps(self._data, indent=4)
 
     def __repr__(self, **kwargs):
-        return "<" + self.__module__ + "." + self.__class__.__name__ + \
-               " " + str(self._path) + " at 0x" + str(id(self)) + ">"
+        version = self.context.connection._version
+        t = snake_to_camel(self._type['name'])
+        return "".join(("<", version, " ", t,
+                        " ", str(self._path), " at 0x", str(id(self)), ">"))
+
+    def __getattr__(self, attr):
+        """ An attempt to give a functioning object back
+        if no subendpoint of the requested name exists
+        """
+        if attr in self.__dict__:
+            return self.__dict__[attr]
+        else:
+            if attr not in self._reader._ep_name_set:
+                raise SdkEndpointNotFound(
+                    "No {} Endpoint found for {}".format(
+                        self._version, attr))
+
+            klass = type(snake_to_camel(attr), (GenericEndpoint,), {})
+            klass.__init__ = get_init_func(klass)
+            klass._name = attr
+            return klass(self.context, self._path)
 
     ######
 
@@ -87,8 +144,8 @@ class Entity(collections.Mapping):
     def _set_subendpoint(self, klass):
         """ Create a sub-endpoint of the given endpoint type """
         assert(issubclass(klass, Endpoint))
-        subendpoint = klass(self._context, self._path)
-        subendpoint = self._context.prepare_endpoint(subendpoint)
+        subendpoint = klass(self.context, self._path)
+        subendpoint = self.context.prepare_endpoint(subendpoint)
         subendpoint_name = klass._name
         setattr(self, subendpoint_name, subendpoint)
 
@@ -98,8 +155,8 @@ class Entity(collections.Mapping):
             params = {'tenant': self._tenant}
 
         data = self._connection.read_entity(self._path, params)
-        entity = self.__class__(self._context, data)
-        entity = self._context.prepare_entity(entity)
+        entity = self.__class__(self.context, data, self._name)
+        entity = self.context.prepare_entity(entity)
         if self._tenant:
             entity._tenant = self._tenant
         return entity
@@ -107,18 +164,18 @@ class Entity(collections.Mapping):
     def set(self, **params):
         """ Send an API request to modify this entity """
         data = self._connection.update_entity(self._path, params)
-        entity = self.__class__(self._context, data)
-        entity = self._context.prepare_entity(entity)
+        entity = self.__class__(self.context, data, self._name)
+        entity = self.context.prepare_entity(entity)
         return entity
 
     def delete(self, **params):
         """ Send an API request to delete this entity """
         data = self._connection.delete_entity(self._path, data=params)
-        entity = self.__class__(self._context, data)
-        entity = self._context.prepare_entity(entity)
+        entity = self.__class__(self.context, data, self._name)
+        entity = self.context.prepare_entity(entity)
 
         # Call any on_delete hooks:
-        entity = self._context.on_entity_delete(entity)
+        entity = self.context.on_entity_delete(entity)
         return entity
 
 
@@ -131,7 +188,7 @@ class Endpoint(object):
         Eg, /network
     """
 
-    _name = None  # Subclass must initialize it
+    _name = "base_endpoint"  # Subclass must initialize it
     _entity_cls = Entity  # Subclass must over-ride this
 
     def __init__(self, context, parent_path):
@@ -139,26 +196,44 @@ class Endpoint(object):
         Parameters:
           context (dateraapi.context.ApiContext)
         """
-        self._context = context
-        if not parent_path and not self._name:
+        self.context = context
+        self._version = context.version
+        self._reader = context.reader
+        self._path = None
+        if (not parent_path and
+                (self._name == "" or self._name == "base_endpoint")):
             self._path = ""  # root endpoint
         else:
             self._path = parent_path + '/' + self._name
         self._connection = context.connection
 
-    def __str__(self):
-        if self._path:
-            return "<" + self.__class__.__name__ + \
-                   " " + repr(self._path) + ">"
+    def __repr__(self):
+        return "".join(("<", self._version, ".", snake_to_camel(self._name),
+                        "Ep", " ", repr(self._path), ">"))
+
+    def __getattr__(self, attr):
+        """ An attempt to give a functioning object back
+        if no subendpoint of the requested name exists
+        """
+        if attr in self.__dict__:
+            return self.__dict__[attr]
         else:
-            return repr(self)
+            if attr not in self._reader._ep_name_set:
+                raise SdkEndpointNotFound(
+                    "No {} Endpoint found for {}".format(
+                        self._version, attr))
+
+            klass = type(snake_to_camel(attr), (GenericEndpoint,), {})
+            klass.__init__ = get_init_func(klass)
+            klass._name = attr
+            return klass(self.context, self._path)
 
     # TODO(mss): Allow passing string, then determine the endpoint version
     def _set_subendpoint(self, klass):
         """ Create a sub-endpoint of the given endpoint type """
         assert(issubclass(klass, Endpoint))
-        subendpoint = klass(self._context, self._path)
-        subendpoint = self._context.prepare_endpoint(subendpoint)
+        subendpoint = klass(self.context, self._path)
+        subendpoint = self.context.prepare_endpoint(subendpoint)
         subendpoint_name = klass._name
         setattr(self, subendpoint_name, subendpoint)
 
@@ -184,8 +259,9 @@ class Endpoint(object):
 
     def _new_contained_entity(self, data):
         """ Creates an Entity object """
-        entity = self._entity_cls(self._context, data)
-        entity = self._context.prepare_entity(entity)
+        name = data.get('name')
+        entity = self._entity_cls(self.context, data, name)
+        entity = self.context.prepare_entity(entity)
         return entity
 
     def get(self, *args, **params):
@@ -219,38 +295,9 @@ class Endpoint(object):
             raise TypeError("Too many arguments for get()")
 
 
-class ListEndpoint(Endpoint):
-    """ List collection endpoint"""
-
-    def get(self):
-        path = self._path
-        data = self._connection.read_endpoint(path)
-        return data
-
-    def list(self):
-        """ Returns a list of strings """
-        return self.get()
-
-    def set(self, *args):
-        """Sets the endpoint with list passed"""
-        data = self._connection.update_endpoint(self._path, args)
-        return data
-
-
-class StringEndpoint(Endpoint):
-    """
-    Endpoint which returns a simple string
-    """
-    def get(self):
-        """ Returns a string """
-        path = self._path
-        data = self._connection.read_endpoint(path)
-        return data
-
-
-class ContainerEndpoint(Endpoint):
-    """
-    Entity collection endpoint
+class GenericEndpoint(Endpoint):
+    """ Catch-all endpoint for when one isn't defined by a type-spec
+    but we still need to access it.  Allows most common operations.
     """
 
     def create(self, **params):
@@ -263,137 +310,26 @@ class ContainerEndpoint(Endpoint):
         entity = self._new_contained_entity(data)
 
         # Call any on_create hooks:
-        entity = self._context.on_entity_create(entity)
+        entity = self.context.on_entity_create(entity)
         return entity
-
-    def list(self, **params):
-        """ Return all entities in this collection as a list """
-        path = self._path
-        data = self._connection.read_endpoint(path, params)
-        return self._get_list(path, data)
-
-
-class SimpleReferenceEndpoint(Endpoint):
-    """
-    A simple reference endpoint
-
-    This endoint is a container for existing entities which can be added
-    or removed from it.  (The entities are created under their own container
-    endpoint.)
-
-    Supports get() / list() / add() / remove()
-    """
-    _name = None  # sub-classes must implement
-    _entity_cls = Entity  # sub-classes must implement
-    _parent_entity_cls = Entity  # sub-classes must implement
-
-    def _create_parent_entity(self, data):
-        return self._parent_entity_cls(self._context, data)
-
-    def _link_unlink(self, op, entity, tenant=None):
-        if _is_stringtype(entity):
-            path = entity
-        else:
-            path = entity._path
-        params = dict(op=op, path=path)
-        if tenant:
-            params['tenant'] = tenant
-        data = self._connection.update_endpoint(self._path, params)
-        return self._create_parent_entity(data)
-
-    def list(self, **params):
-        """ Return all entities in this collection as a list """
-        path = self._path
-        data = self._connection.read_endpoint(path, params)
-        return self._get_list(path, data)
-
-    def add(self, entity, tenant=None):
-        return self._link_unlink('add', entity, tenant=tenant)
-
-    def remove(self, entity, tenant=None):
-        return self._link_unlink('remove', entity, tenant=tenant)
-
-
-class SingletonEndpoint(Endpoint):
-    """ Singleton endpoint """
-
-    def get(self, **params):
-        """
-        Returns a single entity
-        """
-        data = self._connection.read_entity(self._path, params)
-        return self._new_contained_entity(data)
 
     def set(self, **params):
-        """
-        Modifies the entity
-        """
+        """Sets the endpoint with list passed"""
         data = self._connection.update_endpoint(self._path, params)
-        return self._new_contained_entity(data)
-
-    def create(self, **params):
-        """ Create an entity """
-        data = self._connection.create_entity(self._path, params)
-        entity = self._new_contained_entity(data)
-
-        # Call any on_create hooks:
-        entity = self._context.on_entity_create(entity)
-
-        return entity
+        return data
 
     def list(self, **params):
-        """ Return a 0- or 1-element list """
+        """ Return all entities in this collection as a list """
+        path = self._path
         try:
-            return [self.get(**params)]
+            data = self._connection.read_endpoint(path, params)
+            return self._get_list(path, data)
         except _ApiResponseError as ex:
             if ex.message.startswith("No data at "):
                 return []
             raise
 
-
-class KeyValueEndpoint(Endpoint):
-    """ Returns a map-like object of the key-value items in the endpoint
-    """
-    def get(self):
-        return self._connection.read_endpoint(self._path)
-
-    def set(self, **params):
-        """
-        Updates the key-values provided
-        """
-        data = self._connection.update_endpoint(self._path, params)
-        return self._new_contained_entity(data)
-
-
-class MetricCollectionEndpoint(ListEndpoint):
-    """ Returns a list of dictionaries of available metrics
-        e.g. /system/metrics
-    """
-
-    def get(self):
-        path = self._path
-        data = self._connection.read_endpoint(path)
-        return data
-
-
-class MetricEndpoint(Endpoint):
-    """ A specific metric endpoint
-        e.g. /system/metrics/total_reads
-    """
-    pass
-
-
-class MonitoringStatusEndpoint(Endpoint):
-    """ Returns a list of dictionaries to check the status of monitor's health
-        and the system.
-        e.g. /system/health
-            /system/storage_status
-            /system/volume_status
-    """
-
     def get(self, **params):
         path = self._path
         data = self._connection.read_endpoint(path, params)
         return data
-
-###############################################################################
