@@ -4,7 +4,6 @@ import pytest
 from dfs_sdk import get_api
 from dfs_sdk.connection import ApiConnection
 from dfs_sdk.context import ApiContext
-from tests.utils import load_asset
 
 
 @pytest.fixture

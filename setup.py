@@ -10,7 +10,7 @@ setup(
     author='Datera Automation Team',
     author_email='support@datera.io',
     packages=find_packages('src'),
-    package_dir={'dfs_sdk': 'src/dfs_sdk'},
+    package_dir={'': 'src'},
     package_data={'dfs_sdk': ['log_cfg/*.json']},
     include_package_data=True,
     install_requires=[],
