@@ -20,12 +20,21 @@ class ApiContext(object):
 
         self.timeout = None
         self.secure = None
+        self.version = None
 
-        self.reader = None
+        self._reader = None
         self.on_entity_create_hooks = []
         self.on_entity_delete_hooks = []
         self.prepare_entity_hooks = []
         self.prepare_endpoint_hooks = []
+
+    @property
+    def reader(self):
+        if not self._reader:
+            self.connection.login(
+                name=self.username, password=self.password)
+            self._reader = self.connection.reader
+        return self._reader
 
     @staticmethod
     def _call_hooks(obj, hooks):

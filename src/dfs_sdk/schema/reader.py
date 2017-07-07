@@ -141,8 +141,15 @@ class Reader2(SchemaReader):
             for part in parts:
                 if part:
                     self._ep_name_set.add(part)
+        for enum in self.get_enums():
+            self._ep_name_set.add(enum)
+
         self._entities = {
             self._fix_last_en(entity['path']): entity for entity in entities}
+
+    def get_enums(self):
+        return self.schema[os.path.join('/system/metrics/', self.ENTITY_SUB)][
+            'verbs']['read']['urlParamSchema']['metric_name']['enum']
 
     def get_endpoint(self, path):
         p = self._normalize(path)
@@ -160,6 +167,10 @@ class Reader2(SchemaReader):
 class Reader21(Reader2):
     def __init__(self, api_schema):
         super(Reader21, self).__init__(api_schema)
+
+    def get_enums(self):
+        return self.schema[os.path.join('/metrics/io', self.ENTITY_SUB)][
+            'read']['urlParamSchema']['metric']['enum']
 
 
 class Reader22(Reader21):

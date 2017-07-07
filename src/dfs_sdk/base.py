@@ -13,8 +13,8 @@ from .constants import PYTHON_3_0_0_HEXVERSION
 
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-###############################################################################
 
+###############################################################################
 
 def _is_stringtype(value):
     try:
@@ -32,6 +32,7 @@ def get_init_func(klass):
 def snake_to_camel(name):
     parts = name.split('_')
     return "".join(x.title() for x in parts)
+
 ###############################################################################
 
 
@@ -46,19 +47,17 @@ class Entity(collections.Mapping):
     def __init__(self, context, data, name):
         """
         Parameters:
-          context (dateraapi.context.ApiConnection)
+          context (dateraapi.context.ApiContext)
           data (dict)
         """
         self.context = context
-        self._connection = context.connection
         self._data = data
-        self._reader = context.reader
-        self._version = context.version
 
         # Set self._path:
         if 'path' in data:
             self._path = data['path']
-            self._type = self._reader.get_entity(os.path.dirname(self._path))
+            self._type = self.context.reader.get_entity(
+                os.path.dirname(self._path))
             if not self._type:
                 raise SdkEntityNotFound(
                     "/api endpoint did not contain entity: {} ".format(
@@ -128,10 +127,10 @@ class Entity(collections.Mapping):
         if attr in self.__dict__:
             return self.__dict__[attr]
         else:
-            if attr not in self._reader._ep_name_set:
+            if attr not in self.context.reader._ep_name_set:
                 raise SdkEndpointNotFound(
                     "No {} Endpoint found for {}".format(
-                        self._version, attr))
+                        self.context.connection._version, attr))
 
             klass = type(snake_to_camel(attr), (GenericEndpoint,), {})
             klass.__init__ = get_init_func(klass)
@@ -154,7 +153,7 @@ class Entity(collections.Mapping):
         if self._tenant:
             params = {'tenant': self._tenant}
 
-        data = self._connection.read_entity(self._path, params)
+        data = self.context.connection.read_entity(self._path, params)
         entity = self.__class__(self.context, data, self._name)
         entity = self.context.prepare_entity(entity)
         if self._tenant:
@@ -163,14 +162,14 @@ class Entity(collections.Mapping):
 
     def set(self, **params):
         """ Send an API request to modify this entity """
-        data = self._connection.update_entity(self._path, params)
+        data = self.context.connection.update_entity(self._path, params)
         entity = self.__class__(self.context, data, self._name)
         entity = self.context.prepare_entity(entity)
         return entity
 
     def delete(self, **params):
         """ Send an API request to delete this entity """
-        data = self._connection.delete_entity(self._path, data=params)
+        data = self.context.connection.delete_entity(self._path, data=params)
         entity = self.__class__(self.context, data, self._name)
         entity = self.context.prepare_entity(entity)
 
@@ -197,19 +196,17 @@ class Endpoint(object):
           context (dateraapi.context.ApiContext)
         """
         self.context = context
-        self._version = context.version
-        self._reader = context.reader
         self._path = None
         if (not parent_path and
                 (self._name == "" or self._name == "base_endpoint")):
             self._path = ""  # root endpoint
         else:
             self._path = parent_path + '/' + self._name
-        self._connection = context.connection
 
     def __repr__(self):
-        return "".join(("<", self._version, ".", snake_to_camel(self._name),
-                        "Ep", " ", repr(self._path), ">"))
+        return "".join(("<", self.context.connection._version, ".",
+                        snake_to_camel(self._name), "Ep", " ",
+                        repr(self._path), ">"))
 
     def __getattr__(self, attr):
         """ An attempt to give a functioning object back
@@ -218,10 +215,10 @@ class Endpoint(object):
         if attr in self.__dict__:
             return self.__dict__[attr]
         else:
-            if attr not in self._reader._ep_name_set:
+            if attr not in self.context.reader._ep_name_set:
                 raise SdkEndpointNotFound(
                     "No {} Endpoint found for {}".format(
-                        self._version, attr))
+                        self.context.connection._version, attr))
 
             klass = type(snake_to_camel(attr), (GenericEndpoint,), {})
             klass.__init__ = get_init_func(klass)
@@ -272,7 +269,7 @@ class Endpoint(object):
         if len(args) == 0:
             # GET the whole collection
             path = self._path  # Eg. /storage_templates
-            data = self._connection.read_endpoint(path, params)
+            data = self.context.connection.read_endpoint(path, params)
             if isinstance(data, dict):
                 for key in data:
                     data[key] = self._new_contained_entity(data[key])
@@ -286,7 +283,7 @@ class Endpoint(object):
             entity_id = args[0]
             # /storage_template/MyTemplate
             path = self._path + "/" + entity_id
-            data = self._connection.read_entity(path, params=params)
+            data = self.context.connection.read_entity(path, params=params)
             # This should return a single object in a dictionary form
             if isinstance(data, list):
                 return self._get_list(path, data)
@@ -306,7 +303,7 @@ class GenericEndpoint(Endpoint):
 
         Keyword arguments define the attributes of the created entity.
         """
-        data = self._connection.create_entity(self._path, params)
+        data = self.context.connection.create_entity(self._path, params)
         entity = self._new_contained_entity(data)
 
         # Call any on_create hooks:
@@ -315,14 +312,14 @@ class GenericEndpoint(Endpoint):
 
     def set(self, **params):
         """Sets the endpoint with list passed"""
-        data = self._connection.update_endpoint(self._path, params)
+        data = self.context.connection.update_endpoint(self._path, params)
         return data
 
     def list(self, **params):
         """ Return all entities in this collection as a list """
         path = self._path
         try:
-            data = self._connection.read_endpoint(path, params)
+            data = self.context.connection.read_endpoint(path, params)
             return self._get_list(path, data)
         except _ApiResponseError as ex:
             if ex.message.startswith("No data at "):
@@ -331,5 +328,5 @@ class GenericEndpoint(Endpoint):
 
     def get(self, **params):
         path = self._path
-        data = self._connection.read_endpoint(path, params)
+        data = self.context.connection.read_endpoint(path, params)
         return data
