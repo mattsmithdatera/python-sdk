@@ -64,7 +64,7 @@ class Entity(collections.Mapping):
                         os.path.dirname(self._path)))
         else:
             self._path = None
-            self._type = None
+            self._type = {}
         if 'tenant' in data:
             self._tenant = data['tenant']
         else:
@@ -116,7 +116,7 @@ class Entity(collections.Mapping):
 
     def __repr__(self, **kwargs):
         version = self.context.connection._version
-        t = snake_to_camel(self._type['name'])
+        t = snake_to_camel(self._type.get('name', ''))
         return "".join(("<", version, " ", t,
                         " ", str(self._path), " at 0x", str(id(self)), ">"))
 

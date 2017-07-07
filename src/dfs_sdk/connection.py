@@ -230,14 +230,17 @@ class ApiConnection(object):
         data = None
         if os.path.exists(CACHED_SCHEMA):
             with io.open(CACHED_SCHEMA, 'r') as f:
-                data = json.loads(f.read())
+                fdata = f.read()
+                data = {}
+                if fdata:
+                    data = json.loads(fdata)
                 if self._version in data:
                     return data[self._version]
                 data[self._version] = self.read_endpoint(endpoint)
         else:
             data = {self._version: self.read_endpoint(endpoint)}
         with io.open(CACHED_SCHEMA, 'w+') as f:
-            f.write(json.dumps(data))
+            f.write(six.u(json.dumps(data)))
         return data[self._version]
 
     def login(self, **params):
