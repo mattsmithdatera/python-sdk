@@ -27,6 +27,7 @@ DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), LOGDIR)
 DEBUG_LOG = os.path.join(DIR, 'debug_logging.json')
 INFO_LOG = os.path.join(DIR, 'info_logging.json')
 ERROR_LOG = os.path.join(DIR, 'error_logging.json')
+DISABLE = 'disable'
 
 
 LOGS = {'debug': DEBUG_LOG,
@@ -44,6 +45,11 @@ def get_log(name):
 
 def setup_logging():
     path = os.getenv('DSDK_LOG_CFG', DEBUG_LOG)
+    # Allows for disabling all logging config by the library
+    # This is meant to prevent messing with any top-level logging configs
+    # Using the library
+    if path.lower() == DISABLE:
+        return
     if path in LOGS:
         path = LOGS[path]
     with open(path) as f:
