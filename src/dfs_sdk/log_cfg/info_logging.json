@@ -10,7 +10,7 @@
     "handlers": {
 
         "info_file_handler": {
-            "class": "dfs_sdk.dlogging.CompressedRotatingFileHandler",
+            "class": "logging.CompressedRotatingFileHandler",
             "level": "INFO",
             "formatter": "simple",
             "filename": "dsdk_info.log",
@@ -20,7 +20,7 @@
         },
 
         "error_file_handler": {
-            "class": "dfs_sdk.dlogging.CompressedRotatingFileHandler",
+            "class": "logging.CompressedRotatingFileHandler",
             "level": "ERROR",
             "formatter": "simple",
             "filename": "dsdk_error.log",

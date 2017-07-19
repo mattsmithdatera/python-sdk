@@ -135,7 +135,7 @@ def vol_create(si, name, args, api):
         if args.volperf:
             vol.performance_policy.create(total_iops_max=int(
                 args.volperf[0]), total_bandwidth_max=int(args.volperf[1]),
-                                                          tenant=tenant)
+                tenant=tenant)
     else:
         vol = si.volumes.create(name=name, size=int(
             args.size), replica_count=int(numreplicas))
@@ -435,7 +435,7 @@ def mpmap(api, args, tenant):
             if has_tenants(api):
                 print("HOST-DM: ", dm,
                       "   DATERA: ", uuid_map[m]['tname'], "/", uuid_map[
-                            m]['aname'],
+                          m]['aname'],
                       "/", uuid_map[m]['sname'], "/", uuid_map[m]['vname'],
                       "   IQN: ", uuid_map[m]['iqn'],
                       "   MAPPER: /dev/mapper/", mapper,
@@ -472,14 +472,14 @@ def create_fio_template():
 def create_fio_files(api, args, tenant):
 
     fio = {args.basename + '_randread.fio': {
-            'rw': 'randread', 'blocksize': '4k'},
-           args.basename + '_seqread.fio': {'rw': 'read', 'blocksize': '1m'},
-           args.basename + '_randwrite.fio': {
-               'rw': 'randwrite', 'blocksize': '4k'},
-           args.basename + '_seqwrite.fio': {'rw': 'write', 'blocksize': '1m'},
-           args.basename + '_randreadwrite.fio': {
-               'rw': 'randrw', 'rwmixread': '70', 'blocksize': '4k'}
-           }
+        'rw': 'randread', 'blocksize': '4k'},
+        args.basename + '_seqread.fio': {'rw': 'read', 'blocksize': '1m'},
+        args.basename + '_randwrite.fio': {
+        'rw': 'randwrite', 'blocksize': '4k'},
+        args.basename + '_seqwrite.fio': {'rw': 'write', 'blocksize': '1m'},
+        args.basename + '_randreadwrite.fio': {
+        'rw': 'randrw', 'rwmixread': '70', 'blocksize': '4k'}
+    }
 
     create_fio_template()
     mntmap = mpmap(api, args, tenant)
@@ -515,7 +515,7 @@ def chktempl(api, templ):
 
 def unmount(name):
     cmd = "mount |grep %s | awk '{print $3}'" % name
-    for l in os.popen(cmd).readlines():
+    for l in run_cmd(cmd).splitlines():
         line = l.rstrip()
         if line == "/":
             print("skipping unmount of /")
@@ -657,15 +657,15 @@ def dbck():
 
 
 def op_state_poller(instance):
-    count = 0
-    while count < 10:
-        if instance['op_state'] != 'available':
+    count = 10
+    while count:
+        if instance['op_state'] == 'available':
+            return
+        else:
             time.sleep(1)
-            count = count + 1
-        if count > 9:
-            print(instance['name'] + " did not become available in 10s")
-            sys.exit(FAILURE)
-        break
+            count -= 1
+    print(instance['name'] + " did not become available in 10s")
+    sys.exit(FAILURE)
 
 
 def main():
@@ -758,7 +758,7 @@ def main():
 
     cmd = "grep '^InitiatorName' /etc/iscsi/initiatorname.iscsi"
     cmd = cmd + " | sed -e 's/InitiatorName=//'"
-    iscsi_initiator = os.popen(cmd).read().strip()
+    iscsi_initiator = run_cmd(cmd).strip()
     ii = initiator_create(api, host, iscsi_initiator)
 
     #

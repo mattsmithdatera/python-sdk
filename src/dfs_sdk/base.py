@@ -204,9 +204,15 @@ class Endpoint(object):
             self._path = parent_path + '/' + self._name
 
     def __repr__(self):
+        name = snake_to_camel(self._name)
+        if not name:
+            name = 'Root'
+        path = repr(self._path)
+        if path in ("''", '""'):
+            path = repr('/')
+
         return "".join(("<", self.context.connection._version, ".",
-                        snake_to_camel(self._name), "Ep", " ",
-                        repr(self._path), ">"))
+                        name, "Ep", " ", path, ">"))
 
     def __getattr__(self, attr):
         """ An attempt to give a functioning object back
@@ -215,6 +221,11 @@ class Endpoint(object):
         if attr in self.__dict__:
             return self.__dict__[attr]
         else:
+            if not self.context.connection:
+                self.context.connection = self._create_connection(self.context)
+                self.context.connection.login(
+                       name=self._kwargs['username'],
+                       password=self._kwargs['password'])
             if attr not in self.context.reader._ep_name_set:
                 raise SdkEndpointNotFound(
                     "No {} Endpoint found for {}".format(
@@ -326,7 +337,5 @@ class GenericEndpoint(Endpoint):
                 return []
             raise
 
-    def get(self, **params):
-        path = self._path
-        data = self.context.connection.read_endpoint(path, params)
-        return data
+    def get(self, *args, **params):
+        return super(GenericEndpoint, self).get(*args, **params)

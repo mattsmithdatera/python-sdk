@@ -35,6 +35,8 @@ def _api_getter(base):
                                        instantiated, else wait to login until
                                        a request is sent
             """
+            assert self._version is not None
+
             if not hostname or not username or not password:
                 raise ValueError(
                     "hostname, username, and password are required")
@@ -62,7 +64,7 @@ def _api_getter(base):
             secure = kwargs.get('secure', True)
             if not self._context:
                 self._context = ApiContext()
-                self._create_context(
+                self.__create_context(
                         self._context,
                         kwargs['hostname'],
                         username=kwargs['username'],
@@ -77,9 +79,11 @@ def _api_getter(base):
         def context(self, value):
             self._context = value
 
-        def _create_context(self, context, hostname, username=None,
-                            password=None, tenant=None, timeout=None,
-                            secure=True, version=DEFAULT_API_VERSION):
+        # We really don't want this overridden.  It messes with
+        # initialization too much, thus the name-mangle
+        def __create_context(self, context, hostname, username=None,
+                             password=None, tenant=None, timeout=None,
+                             secure=True, version=DEFAULT_API_VERSION):
             """
             Creates the context object
             This will be attached as a private attribute to all entities

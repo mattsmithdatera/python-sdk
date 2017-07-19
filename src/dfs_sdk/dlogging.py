@@ -103,3 +103,8 @@ class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
             self.doArchive(dfn)
         if not self.delay:
             self.stream = self._open()
+
+
+# Adding this to the main logging module so we can specify
+# class: 'logging.CompressedRotatingFileHandler' in our dictConfigs
+logging.CompressedRotatingFileHandler = CompressedRotatingFileHandler
