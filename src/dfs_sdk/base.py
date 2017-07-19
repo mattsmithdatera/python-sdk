@@ -44,7 +44,7 @@ class Entity(collections.Mapping):
     """
     _name = "base_entity"
 
-    def __init__(self, context, data, name):
+    def __init__(self, context, data, name, strict=False):
         """
         Parameters:
           context (dateraapi.context.ApiContext)
@@ -59,9 +59,13 @@ class Entity(collections.Mapping):
             self._type = self.context.reader.get_entity(
                 os.path.dirname(self._path))
             if not self._type:
-                raise SdkEntityNotFound(
-                    "/api endpoint did not contain entity: {} ".format(
-                        os.path.dirname(self._path)))
+                self._type = self.context.reader.get_entity(self._path)
+                if not self._type and strict:
+                    raise SdkEntityNotFound(
+                        "/api endpoint did not contain entity: {} or entity:"
+                        " {}".format(os.path.dirname(self._path), self._path))
+                else:
+                    self._type = {'name': 'generic_entity'}
         else:
             self._path = None
             self._type = {}
@@ -123,14 +127,24 @@ class Entity(collections.Mapping):
     def __getattr__(self, attr):
         """ An attempt to give a functioning object back
         if no subendpoint of the requested name exists
+
+        Lookup Resolution Order:
+            Function --> Endpoint --> Data Key
+
+        If data key is preferred, use dictionary syntax:
+            ai.storage_instances --> Endpoint
+            ai['storage_instances'] --> Data Key List
         """
         if attr in self.__dict__:
             return self.__dict__[attr]
         else:
             if attr not in self.context.reader._ep_name_set:
-                raise SdkEndpointNotFound(
-                    "No {} Endpoint found for {}".format(
-                        self.context.connection._version, attr))
+                if attr in self._data:
+                    return self._data[attr]
+                else:
+                    raise SdkEndpointNotFound(
+                        "No {} Endpoint found for {}".format(
+                            self.context.connection._version, attr))
 
             klass = type(snake_to_camel(attr), (GenericEndpoint,), {})
             klass.__init__ = get_init_func(klass)
@@ -138,7 +152,6 @@ class Entity(collections.Mapping):
             return klass(self.context, self._path)
 
     ######
-
     # TODO(mss): Allow passing string, then determine the endpoint version
     def _set_subendpoint(self, klass):
         """ Create a sub-endpoint of the given endpoint type """
@@ -188,7 +201,7 @@ class Endpoint(object):
     """
 
     _name = "base_endpoint"  # Subclass must initialize it
-    _entity_cls = Entity  # Subclass must over-ride this
+    _entity_cls = Entity
 
     def __init__(self, context, parent_path):
         """
@@ -254,6 +267,17 @@ class Endpoint(object):
                     for value in data.values()]
         else:
             raise ValueError("Unexpected response: " + repr(data))
+
+    def _link_unlink(self, op, entity, tenant=None):
+        if _is_stringtype(entity):
+            path = entity
+        else:
+            path = entity._path
+        params = dict(op=op, path=path)
+        if tenant:
+            params['tenant'] = tenant
+        data = self.context.connection.update_endpoint(self._path, params)
+        return self._new_contained_entity(data)
 
     def _prepare_data(self, value):
         """
@@ -346,3 +370,9 @@ class GenericEndpoint(Endpoint):
 
     def get(self, *args, **params):
         return super(GenericEndpoint, self).get(*args, **params)
+
+    def add(self, entity, tenant=None):
+        return self._link_unlink('add', entity, tenant=tenant)
+
+    def remove(self, entity, tenant=None):
+        return self._link_unlink('remove', entity, tenant=tenant)
