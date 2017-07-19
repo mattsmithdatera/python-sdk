@@ -282,9 +282,16 @@ class Endpoint(object):
             path = self._path  # Eg. /storage_templates
             data = self.context.connection.read_endpoint(path, params)
             if isinstance(data, dict):
-                for key in data:
-                    data[key] = self._new_contained_entity(data[key])
-                return data
+                # Try preparing entities for each key
+                try:
+                    new_data = {}
+                    for key in data:
+                        new_data[key] = self._new_contained_entity(data[key])
+                    return new_data
+                # Fall back to just preparing the whole thing
+                # (SingletonEndpoints ususally do this)
+                except AttributeError:
+                    return self._new_contained_entity(data)
             elif isinstance(data, list):
                 return self._get_list(path, data)
             else:
