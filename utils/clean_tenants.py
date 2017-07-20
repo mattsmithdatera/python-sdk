@@ -6,6 +6,7 @@ import argparse
 import re
 import sys
 
+from builtins import input
 from dfs_sdk import get_api
 
 IPRE_STR = r'(\d{1,3}\.){3}\d{1,3}'
@@ -26,49 +27,50 @@ def readCinderConf():
     return san_ip, san_login, san_password
 
 
-def getAPI(tenant=None):
-    san_ip, san_login, san_password = readCinderConf()
+def getAPI(san_ip, san_login, san_password, version, tenant=None):
+    if not any((san_ip, san_login, san_password)):
+        san_ip, san_login, san_password = readCinderConf()
     if tenant and "root" not in tenant:
         tenant = "/root/{}".format(tenant)
     return get_api(san_ip,
                    san_login,
                    san_password,
+                   version,
                    tenant=tenant,
                    secure=True,
                    immediate_login=True)
 
 
 def main(args):
-    api = getAPI()
+    api = getAPI(args.hostname, args.username, args.password, args.api_version)
     to_delete = []
     for tenant in api.tenants.list():
-        tname = "/root/{}".format(tenant['name'])
-        if "root" in tenant['name']:
-            tname = "/{}".format(tenant['name'])
-        if ((not api.app_instances.list(tenant=tname) or args.non_empty) and
+        if tenant['path'].endswith('root'):
+            continue
+        tpath = tenant['path']
+        if ((not api.app_instances.list(tenant=tpath) or args.non_empty) and
                 args.clean):
             if args.openstack_only:
                 if tenant['name'].startswith("OS-"):
-                    print("Openstack Tenant: ", tname)
+                    print("Openstack Tenant: ", tpath)
                     to_delete.append(tenant)
             else:
-                print("Tenant", tname)
+                print("Tenant", tpath)
                 to_delete.append(tenant)
     yes = False
     if args.yes:
         yes = True
     else:
-        resp = raw_input("Are you sure you want to delete these? [Y/N]\n")
-        if resp.lower().strip() in ("y", "yes"):
+        resp = input("Are you sure you want to delete these? [Y/N]\n")
+        if resp.strip() in ("Y", "yes"):
             yes = True
 
     if yes:
         print("Deleting")
         for t in to_delete:
-            tname = "/root/{}".format(t['name'])
-            for ai in api.app_instances.list(tenant=tname):
-                ai.set(admin_state="offline", tenant=tname, force=True)
-                ai.delete(tenant=tname)
+            for ai in api.app_instances.list(tenant=t['path']):
+                ai.set(admin_state="offline", tenant=t['path'], force=True)
+                ai.delete(tenant=t['path'])
             t.delete()
         sys.exit(0)
     else:
@@ -87,6 +89,10 @@ if __name__ == "__main__":
                         help="DANGER!!! Bypass confirmation prompt")
     parser.add_argument("-n", "--non-empty", action='store_true',
                         help="Clean non-empty tenants as well")
+    parser.add_argument("--hostname")
+    parser.add_argument("--username")
+    parser.add_argument("--password")
+    parser.add_argument("--api-version", default="v2.1")
     args = parser.parse_args()
     main(args)
     sys.exit(0)

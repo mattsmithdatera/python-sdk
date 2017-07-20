@@ -34,7 +34,7 @@ def readCinderConf():
     return san_ip, san_login, san_password
 
 
-def getAPI(san_ip, san_login, san_password, tenant=None):
+def getAPI(san_ip, san_login, san_password, version, tenant=None):
     if not any((san_ip, san_login, san_password)):
         san_ip, san_login, san_password = readCinderConf()
     if tenant and "root" not in tenant:
@@ -42,7 +42,7 @@ def getAPI(san_ip, san_login, san_password, tenant=None):
     return get_api(san_ip,
                    san_login,
                    san_password,
-                   "v2.1",
+                   version,
                    tenant=tenant,
                    secure=True,
                    immediate_login=True)
@@ -71,7 +71,7 @@ def _del_worker(queue, api):
 
 
 def main(args):
-    api = getAPI(args.hostname, args.username, args.password)
+    api = getAPI(args.hostname, args.username, args.password, args.api_version)
     to_delete = set()
 
     filter_strs = set(args.re_filter)
@@ -107,7 +107,7 @@ def main(args):
 
     yes = False
     if not args.yes:
-        yes = True if input("Y/n\n") == "Y" else False
+        yes = True if input("Y/n\n").strip() in ("Y", "yes") else False
 
     if yes:
         for _ in range(args.threads):
@@ -138,6 +138,7 @@ if __name__ == "__main__":
     parser.add_argument("--hostname")
     parser.add_argument("--username")
     parser.add_argument("--password")
+    parser.add_argument("--api-version", default="v2.1")
     args = parser.parse_args()
 
     if not args.tenant:
