@@ -376,3 +376,7 @@ class GenericEndpoint(Endpoint):
 
     def remove(self, entity, tenant=None):
         return self._link_unlink('remove', entity, tenant=tenant)
+
+    def entity_from_path(self, path, **params):
+        data = self.context.connection.read_endpoint(path, params)
+        return self._new_contained_entity(data)
