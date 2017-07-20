@@ -129,8 +129,6 @@ if __name__ == "__main__":
                              " use 'all' for all tenants")
     parser.add_argument("-a", "--all", action='store_true',
                         help="Match all AppInstances")
-    parser.add_argument("-c", "--clean", action='store_true',
-                        help="Clean matching AppInstances")
     parser.add_argument("-y", "--yes", action='store_true',
                         help="DANGER!!! Bypass confirmation prompt")
     parser.add_argument("-m", "--threads", default=5,
