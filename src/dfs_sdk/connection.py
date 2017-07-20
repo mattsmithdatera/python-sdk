@@ -1,6 +1,8 @@
 """
 Provides the ApiConnection class
 """
+import io
+import os
 import sys
 import socket
 import json
@@ -21,6 +23,7 @@ from .constants import PYTHON_2_7_9_HEXVERSION
 from .constants import PYTHON_3_0_0_HEXVERSION
 from .constants import VERSION
 from .dlogging import get_log
+from .schema.reader import get_reader
 
 __copyright__ = "Copyright 2017, Datera, Inc."
 
@@ -40,6 +43,7 @@ else:
     from urllib import quote as encode_url  # noqa pylint: disable=import-error
 
 LOG = get_log(__name__)
+CACHED_SCHEMA = ".cached-schema"
 
 
 def _with_authentication(method):
@@ -107,6 +111,7 @@ class ApiConnection(object):
 
         self._lock = threading.Lock()
         self._key = None
+        self.reader = None
         self._logged_in = False
 
     @staticmethod
@@ -217,8 +222,40 @@ class ApiConnection(object):
                                          resp_data, resp_status, resp_reason)
         return (resp_data, resp_status, resp_reason, resp_headers)
 
+    def _get_schema(self, endpoint):
+        """
+        Tries to access cached schema, if not available, pulls new schema
+        from the remote box.
+        """
+        data = None
+        if os.path.exists(CACHED_SCHEMA):
+            with io.open(CACHED_SCHEMA, 'rb') as f:
+                fdata = f.read()
+                data = {}
+                if fdata:
+                    try:
+                        # Python 2.7
+                        data = json.loads(fdata)
+                    except TypeError:
+                        # Python 3+
+                        data = json.loads(fdata.decode('utf-8'))
+                if self._version in data:
+                    return data[self._version]
+                data[self._version] = self.read_endpoint(endpoint)
+        else:
+            data = {self._version: self.read_endpoint(endpoint)}
+        with io.open(CACHED_SCHEMA, 'wb+') as f:
+            jdata = json.dumps(data)
+            try:
+                # Python 2.7
+                f.write(jdata)
+            except TypeError:
+                # Python 3+
+                f.write(jdata.encode('utf-8'))
+        return data[self._version]
+
     def login(self, **params):
-        """ Login to the API, store the key """
+        """ Login to the API, store the key, get schema """
         if params:
             send_data = {
                 "name": params.get("name"), "password": params.get("password")}
@@ -226,7 +263,7 @@ class ApiConnection(object):
             send_data = {"name": self._username, "password": self._password}
         body = json.dumps(send_data)
 
-        headers = dict()
+        headers = {}
         headers["content-type"] = "application/json; charset=utf-8"
         urlpath = "/" + self._version + "/login"
         method = "PUT"
@@ -245,6 +282,9 @@ class ApiConnection(object):
         with self._lock:
             self._key = key
             self._logged_in = True
+            Reader = get_reader(self._version)
+            reader = Reader(self._get_schema(Reader._endpoint))
+            self.reader = reader
 
     def logout(self):
         """ Perform logout operation with the key"""

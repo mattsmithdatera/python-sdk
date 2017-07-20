@@ -87,3 +87,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Compressed files
+*.gz
+
+# logfile
+*.1

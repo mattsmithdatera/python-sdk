@@ -10,6 +10,17 @@ LOG = get_log(__name__)
 __copyright__ = "Copyright 2017, Datera, Inc."
 
 
+class SdkError(Exception):
+    """ This is the base class for SDK exceptions
+
+    Exceptions specifically dealing with the SDK should inherit from the class
+
+    Exceptions dealing with API responses should use exceptions that inherit
+    from ApiResponseError
+    """
+    pass
+
+
 class ApiError(Exception):
     """ This is the base class for exceptions raised by the API """
     pass
@@ -99,4 +110,21 @@ class ApiNotFoundError(_ApiResponseError):
 
 class ApiConflictError(_ApiResponseError):
     """ Edit conflict """
+    pass
+
+
+###############################################################################
+
+class SdkTypeNotFound(SdkError):
+    """ Generic SDK type not found exception """
+    pass
+
+
+class SdkEndpointNotFound(SdkTypeNotFound):
+    """ SDK Endpoint type was not found """
+    pass
+
+
+class SdkEntityNotFound(SdkTypeNotFound):
+    """ SDK Entity type was not found """
     pass

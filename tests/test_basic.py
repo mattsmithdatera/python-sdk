@@ -1,16 +1,7 @@
-import io
 import itertools
-import os
 import pytest
 
-DATA = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'data')
-
-
-def load_asset(name):
-    n = os.path.join(DATA, name)
-    with io.open(n) as f:
-        return f.read().encode('utf-8')
+from tests.utils import load_asset
 
 
 def update_side_effect(mock, *args):
@@ -107,3 +98,12 @@ def test_api_21_vol_list(mock_api_21):
     vols = si.volumes.list()
     assert len(vols) == 1
     assert vols[0]['name'] == 'volume-1'
+
+
+# def test_schema():
+#     from dfs_sdk.schema.reader import Reader21
+#     import requests
+#     data = requests.get("http://172.19.1.41:7717/v2.1/api").json()
+#     r = Reader21(data)
+#     for endpoint in r._endpoints:
+#         print(r._normalize(endpoint))
