@@ -109,7 +109,7 @@ def main(args):
     if not args.yes:
         yes = True if input("Y/n\n").strip() in ("Y", "yes") else False
 
-    if yes:
+    if yes or args.yes:
         for _ in range(args.threads):
             thread = threading.Thread(target=_del_worker,
                                       args=(to_delete_queue, api))
