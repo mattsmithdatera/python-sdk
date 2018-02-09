@@ -19,7 +19,6 @@ from .exceptions import ApiInternalError, ApiNotFoundError
 from .exceptions import ApiInvalidRequestError, ApiConflictError
 from .exceptions import ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
-from .constants import PYTHON_2_7_9_HEXVERSION
 from .constants import PYTHON_3_0_0_HEXVERSION
 from .constants import VERSION
 from .dlogging import get_log
@@ -124,11 +123,11 @@ class ApiConnection(object):
           timeout (int or None)
         """
         if secure:
-            if sys.hexversion >= PYTHON_2_7_9_HEXVERSION:
-                sslcontext = ssl._create_unverified_context()
+            sslcontext = ssl._create_unverified_context()
+            try:
                 conn = HTTPSConnection(hostname, port=port, timeout=timeout,
                                        context=sslcontext)
-            else:
+            except TypeError:
                 conn = HTTPSConnection(hostname, port=port, timeout=timeout)
         else:
             conn = HTTPConnection(hostname, port=port, timeout=timeout)
