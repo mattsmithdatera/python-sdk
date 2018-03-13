@@ -73,12 +73,25 @@ def main(args):
         ids = exe("openstack volume list --all-projects --format value | "
                   "awk '{print $1}'").split("\n")
         vols = {"OS-{}".format(vid) for vid in ids if vid}
-        print("No way to check images for all projects, "
-              "checking just under current project")
+
+        pids = exe("openstack project list --format value "
+                   "| awk '{print $1}'").split("\n")
+        imgids = []
+        for pid in [p for p in pids if p]:
+            try:
+                imgids.extend(
+                    exe("openstack --os-project-id {} image list --format "
+                        "value | awk '{{print $1}}'".format(pid)).split("\n"))
+            except subprocess.CalledProcessError:
+                pass
+        imgids = set(imgids)
+        vols = vols.union(
+                {"OS-{}".format(imgid) for imgid in imgids if imgid})
+
     else:
         vols = {"OS-{}".format(vol.id) for vol in conn.block_storage.volumes()}
-    vols = vols.union(
-            {"OS-{}".format(img.id) for img in conn.image.images()})
+        vols = vols.union(
+                {"OS-{}".format(img.id) for img in conn.image.images()})
     ais = api.app_instances.list()
 
     non_os = set()
@@ -86,7 +99,8 @@ def main(args):
         if ai['name'] not in vols:
             non_os.add(ai['name'])
 
-    print("OpenStack Project:", os.getenv("OS_PROJECT_NAME"))
+    pdisplay = "all" if tenant == "all" else os.getenv("OS_PROJECT_NAME")
+    print("OpenStack Project:", pdisplay)
     print("Datera Tenant: ", api._context.tenant)
     print()
     print("Datera OpenStack AIs")
