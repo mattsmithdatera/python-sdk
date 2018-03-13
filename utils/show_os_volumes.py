@@ -5,6 +5,7 @@ from __future__ import (print_function, unicode_literals, division,
 
 import argparse
 import os
+import subprocess
 import sys
 
 from openstack import connection
@@ -23,6 +24,11 @@ def vprint(*args, **kwargs):
     global verbose
     if verbose:
         print(*args, **kwargs)
+
+
+def exe(cmd):
+    vprint("Running cmd:", cmd)
+    return subprocess.check_output(cmd, shell=True)
 
 
 def get_conn(project_name=None, username=None, password=None, udomain=None,
@@ -51,16 +57,28 @@ def main(args):
     if args.verbose:
         verbose = True
 
+    tenant = args.tenant
+    if args.all_projects_all_tenants:
+        tenant = "all"
+
     api = getAPI(args.san_ip,
                  args.san_login,
                  args.san_password,
                  args.api_version,
-                 args.tenant)
+                 tenant)
 
     conn = get_conn()
 
-    vols = {"OS-{}".format(vol.id) for vol in conn.block_storage.volumes()}
-    vols = vols.union({"OS-{}".format(img.id) for img in conn.image.images()})
+    if tenant == "all":
+        ids = exe("openstack volume list --all-projects --format value | "
+                  "awk '{print $1}'").split("\n")
+        vols = {"OS-{}".format(vid) for vid in ids if vid}
+        print("No way to check images for all projects, "
+              "checking just under current project")
+    else:
+        vols = {"OS-{}".format(vol.id) for vol in conn.block_storage.volumes()}
+    vols = vols.union(
+            {"OS-{}".format(img.id) for img in conn.image.images()})
     ais = api.app_instances.list()
 
     non_os = set()
@@ -88,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument('--san_password')
     parser.add_argument('--api-version')
     parser.add_argument('--tenant')
+    parser.add_argument('--all-projects-all-tenants', action='store_true')
     parser.add_argument('-v', '--verbose', default=False, action='store_true',
                         help="Enable verbose output")
 

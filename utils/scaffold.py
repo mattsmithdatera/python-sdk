@@ -56,7 +56,7 @@ def getAPI(san_ip, san_login, san_password, version=None, tenant=None):
         san_login = csan_login
     if not san_password:
         san_password = csan_password
-    if tenant and "root" not in tenant:
+    if tenant and "root" not in tenant and tenant != "all":
         tenant = "/root/{}".format(tenant)
     if not tenant:
         tenant = "/root"
