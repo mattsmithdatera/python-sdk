@@ -45,28 +45,6 @@ def get_conn(project_name=None, username=None, password=None, udomain=None,
     return connection.Connection(**auth_dict)
 
 
-def create_volume(conn, size, vol_ref=None, vols=None, image_name=None,
-                  volume_type=None):
-    global image_id
-    imid = None
-    if not vol_ref:
-        imid = image_id
-    vprint("Creating Volume: size={}, vol_ref={}, image_name={}, "
-           "volume_type={}".format(size, vol_ref, image_name, volume_type))
-    vol_id = conn.block_storage.create_volume(size=size,
-                                              imageRef=imid,
-                                              source_volid=vol_ref,
-                                              volume_type='datera').id
-    vprint("Created Volume: {}".format(vol_id))
-    while True:
-        vol = conn.block_storage.get_volume(vol_id)
-        if vol.status == 'available':
-            if vols:
-                vols.put(vol)
-            vprint("Volume: {} now available".format(vol_id))
-            return vol
-
-
 def main(args):
 
     global verbose, net_name, netns
@@ -90,6 +68,9 @@ def main(args):
         if ai['name'] not in vols:
             non_os.add(ai['name'])
 
+    print("OpenStack Project:", os.getenv("OS_PROJECT_NAME"))
+    print("Datera Tenant: ", api._context.tenant)
+    print()
     print("Datera OpenStack AIs")
     print("--------------------")
     for ai in sorted(vols):

@@ -14,11 +14,25 @@ SLG = re.compile(r'san_login\s+?=\s+?(?P<san_login>.*)')
 SPW = re.compile(r'san_password\s+?=\s+?(?P<san_password>.*)')
 TNT = re.compile(r'datera_tenant_id\s+?=\s+?(?P<tenant_id>.*)')
 
+LATEST = "v2.2"
+
 
 def read_cinder_conf():
     data = None
+    found_index = 0
+    found_last_index = -1
     with io.open('/etc/cinder/cinder.conf') as f:
-        data = f.read()
+        for index, line in enumerate(f):
+            if '[datera]' == line.strip().lower():
+                found_index = index
+                break
+        for index, line in enumerate(f):
+            if '[' in line and ']' in line:
+                found_last_index = index + found_index
+                break
+    with io.open('/etc/cinder/cinder.conf') as f:
+        data = "".join(f.readlines()[
+            found_index:found_last_index])
     san_ip = SIP.search(data).group('san_ip')
     san_login = SLG.search(data).group('san_login')
     san_password = SPW.search(data).group('san_password')
@@ -29,12 +43,25 @@ def read_cinder_conf():
 
 
 def getAPI(san_ip, san_login, san_password, version=None, tenant=None):
-    if not any((san_ip, san_login, san_password)):
-        san_ip, san_login, san_password, tenant = read_cinder_conf()
+    csan_ip, csan_login, csan_password, ctenant = None, None, None, None
+    if not all((san_ip, san_login, san_password, tenant)):
+        csan_ip, csan_login, csan_password, ctenant = read_cinder_conf()
+    # Set from cinder.conf if they don't exist
+    # This allows overriding some values in cinder.conf
+    if not tenant:
+        tenant = ctenant
+    if not san_ip:
+        san_ip = csan_ip
+    if not san_login:
+        san_login = csan_login
+    if not san_password:
+        san_password = csan_password
     if tenant and "root" not in tenant:
         tenant = "/root/{}".format(tenant)
+    if not tenant:
+        tenant = "/root"
     if not version:
-        version = "v2.2"
+        version = LATEST
     return get_api(san_ip,
                    san_login,
                    san_password,
