@@ -1,2 +1,4 @@
 git+http://github.com/Datera/python-sdk
+six
+future
 openstacksdk

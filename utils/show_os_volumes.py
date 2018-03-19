@@ -10,7 +10,7 @@ import sys
 
 from openstack import connection
 
-from scaffold import getAPI
+from dfs_sdk.scaffold import getAPI
 
 verbose = False
 
@@ -48,7 +48,7 @@ def get_conn(project_name=None, username=None, password=None, udomain=None,
     if not all(auth_dict.keys()):
         usage()
         sys.exit(1)
-    return connection.Connection(**auth_dict)
+    return connection.connect(**auth_dict)
 
 
 def main(args):
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     parser.add_argument('--san-ip')
     parser.add_argument('--san_login')
     parser.add_argument('--san_password')
-    parser.add_argument('--api-version')
+    parser.add_argument('--api-version', default="2.2")
     parser.add_argument('--tenant')
     parser.add_argument('--all-projects-all-tenants', action='store_true')
     parser.add_argument('-v', '--verbose', default=False, action='store_true',

@@ -40,7 +40,8 @@ def _del_worker(queue, api):
 
 
 def main(args):
-    api = getAPI(args.hostname, args.username, args.password, args.api_version)
+    api = getAPI(args.hostname, args.username, args.password, args.api_version,
+                 args.tenant)
     to_delete = set()
 
     filter_strs = set(args.re_filter)
@@ -108,15 +109,17 @@ if __name__ == "__main__":
     parser.add_argument("--api-version", default="v2.1")
     args = parser.parse_args()
 
-    if not args.tenant:
+    if not args.tenant and args.username == "admin":
         args.tenant = ['/root']
+    elif not args.tenant and args.username != "admin":
+        args.tenant = ['/root/{}'.format(args.username.strip())]
 
     tenants = []
     for tenant in args.tenant:
         if tenant == "all":
             tenants = "ALL"
             break
-        if "root" not in tenant:
+        if args.username == "admin" and "root" not in tenant:
             t = "/root/{}".format(tenant.strip("/"))
             tenants.append(t)
         else:
