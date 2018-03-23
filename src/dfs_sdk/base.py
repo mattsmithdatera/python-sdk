@@ -44,7 +44,7 @@ class Entity(collections.Mapping):
     """
     _name = "base_entity"
 
-    def __init__(self, context, data, name, strict=False):
+    def __init__(self, context, data, name, parent_path, strict=False):
         """
         Parameters:
           context (dateraapi.context.ApiContext)
@@ -65,10 +65,10 @@ class Entity(collections.Mapping):
                         "/api endpoint did not contain entity: {} or entity:"
                         " {}".format(os.path.dirname(self._path), self._path))
                 else:
-                    self._type = {'name': 'generic_entity'}
+                    self._type = {'name': self._name}
         else:
-            self._path = None
-            self._type = {}
+            self._path = parent_path
+            self._type = {'name': self._name}
         if 'tenant' in data:
             self._tenant = data['tenant']
         else:
@@ -121,6 +121,8 @@ class Entity(collections.Mapping):
     def __repr__(self, **kwargs):
         version = self.context.connection._version
         t = snake_to_camel(self._type.get('name', ''))
+        if t == "BaseEntity":
+            t = self._name
         return "".join(("<", version, " ", t,
                         " ", str(self._path), " at 0x", str(id(self)), ">"))
 
@@ -157,7 +159,6 @@ class Entity(collections.Mapping):
         """ Create a sub-endpoint of the given endpoint type """
         assert(issubclass(klass, Endpoint))
         subendpoint = klass(self.context, self._path)
-        subendpoint = self.context.prepare_endpoint(subendpoint)
         subendpoint_name = klass._name
         setattr(self, subendpoint_name, subendpoint)
 
@@ -168,7 +169,6 @@ class Entity(collections.Mapping):
 
         data = self.context.connection.read_entity(self._path, params)
         entity = self.__class__(self.context, data, self._name)
-        entity = self.context.prepare_entity(entity)
         if self._tenant:
             entity._tenant = self._tenant
         return entity
@@ -177,17 +177,12 @@ class Entity(collections.Mapping):
         """ Send an API request to modify this entity """
         data = self.context.connection.update_entity(self._path, params)
         entity = self.__class__(self.context, data, self._name)
-        entity = self.context.prepare_entity(entity)
         return entity
 
     def delete(self, **params):
         """ Send an API request to delete this entity """
         data = self.context.connection.delete_entity(self._path, data=params)
         entity = self.__class__(self.context, data, self._name)
-        entity = self.context.prepare_entity(entity)
-
-        # Call any on_delete hooks:
-        entity = self.context.on_entity_delete(entity)
         return entity
 
 
@@ -254,7 +249,6 @@ class Endpoint(object):
         """ Create a sub-endpoint of the given endpoint type """
         assert(issubclass(klass, Endpoint))
         subendpoint = klass(self.context, self._path)
-        subendpoint = self.context.prepare_endpoint(subendpoint)
         subendpoint_name = klass._name
         setattr(self, subendpoint_name, subendpoint)
 
@@ -292,8 +286,9 @@ class Endpoint(object):
     def _new_contained_entity(self, data):
         """ Creates an Entity object """
         name = data.get('name')
-        entity = self._entity_cls(self.context, data, name)
-        entity = self.context.prepare_entity(entity)
+        if not name:
+            name = snake_to_camel(self._name + "_entity")
+        entity = self._entity_cls(self.context, data, name, self._path)
         return entity
 
     def get(self, *args, **params):
@@ -348,8 +343,6 @@ class GenericEndpoint(Endpoint):
         data = self.context.connection.create_entity(self._path, params)
         entity = self._new_contained_entity(data)
 
-        # Call any on_create hooks:
-        entity = self.context.on_entity_create(entity)
         return entity
 
     def set(self, **params):
