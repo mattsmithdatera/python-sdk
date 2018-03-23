@@ -169,8 +169,12 @@ class Reader21(Reader2):
         super(Reader21, self).__init__(api_schema)
 
     def get_enums(self):
-        return self.schema[os.path.join('/metrics/io', self.ENTITY_SUB)][
-            'read']['urlParamSchema']['metric']['enum']
+        found = []
+        found.extend(self.schema[os.path.join('/metrics/io', self.ENTITY_SUB)][
+            'read']['urlParamSchema']['metric']['enum'])
+        found.extend(self.schema[os.path.join('/metrics/hw', self.ENTITY_SUB)][
+            'read']['urlParamSchema']['metric']['enum'])
+        return found
 
 
 class Reader22(Reader21):
