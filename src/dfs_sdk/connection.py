@@ -339,8 +339,49 @@ class ApiConnection(object):
         else:
             raise ApiError(msg, resp_data)
 
-    @_with_authentication
     def _do_request(self, method, urlpath, data=None, params=None):
+        """
+        Handle the aggregation of different pages for the request
+        """
+        resp_meta, resp_data = \
+            self._do_auth_request(method, urlpath, data, params)
+
+        # No metadata means no pagination
+        if "metadata" not in resp_meta:
+            return resp_meta, resp_data
+
+        if "offset" in resp_meta["metadata"]:
+            offset = resp_meta["metadata"]["offset"]
+        else:
+            offset = 0
+
+        # Should we handle POST or PUT?
+        # Limiting the method to GET for now
+        if (method == "GET" and "total_count" in resp_meta["metadata"] and
+                "request_count" in resp_meta["metadata"]):
+            # Keep firing until we get everything
+            while True:
+                ccount = offset + resp_meta["metadata"]["request_count"]
+                tcount = resp_meta["metadata"]["total_count"]
+                # We've gotten everything
+                limit = params.get("limit", tcount) if params else tcount
+                if limit <= ccount:
+                    break
+
+                offset += resp_meta["metadata"]["limit"]
+                next_offset = {"offset": offset}
+                resp_meta, resp_data_container = \
+                    self._do_auth_request(
+                        method, urlpath, data, params=next_offset)
+                # Expanding the result
+                if isinstance(resp_data, dict):
+                    resp_data.update(resp_data_container)
+                else:
+                    resp_data.extend(resp_data_container)
+        return resp_meta, resp_data
+
+    @_with_authentication
+    def _do_auth_request(self, method, urlpath, data=None, params=None):
         """
         Translates to/from JSON as needed, calls _http_connect_request()
         Bubbles up ApiError on error

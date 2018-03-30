@@ -4,7 +4,7 @@ since many other modules import this one
 """
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-VERSION = "1.2.4"
+VERSION = "1.2.5"
 
 VERSION_HISTORY = """
 Version History:
@@ -17,6 +17,7 @@ Version History:
              curated list.  Log compression
     1.2.2 -- Change python version check in Connection to be forgivness based
     1.2.4 -- Named object support, hw metics support
+    1.2.5 -- v2.2 Paging support
 """
 
 API_VERSIONS = ("v2", "v2.1", "v2.2")
