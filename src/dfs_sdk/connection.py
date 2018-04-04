@@ -363,9 +363,10 @@ class ApiConnection(object):
             while True:
                 ccount = offset + resp_meta["metadata"]["request_count"]
                 tcount = resp_meta["metadata"]["total_count"]
-                # We've gotten everything
                 limit = params.get("limit", tcount) if params else tcount
-                if limit <= ccount:
+                # If we've hit the limit or there isn't a limit parameter in
+                # the returned metadata, we're done
+                if limit <= ccount or "limit" not in resp_meta["metadata"]:
                     break
 
                 offset += resp_meta["metadata"]["limit"]
