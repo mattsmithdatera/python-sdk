@@ -168,7 +168,7 @@ class Entity(collections.Mapping):
             params = {'tenant': self._tenant}
 
         data = self.context.connection.read_entity(self._path, params)
-        entity = self.__class__(self.context, data, self._name)
+        entity = self.__class__(self.context, data, self._name, self._path)
         if self._tenant:
             entity._tenant = self._tenant
         return entity
@@ -176,13 +176,13 @@ class Entity(collections.Mapping):
     def set(self, **params):
         """ Send an API request to modify this entity """
         data = self.context.connection.update_entity(self._path, params)
-        entity = self.__class__(self.context, data, self._name)
+        entity = self.__class__(self.context, data, self._name, self._path)
         return entity
 
     def delete(self, **params):
         """ Send an API request to delete this entity """
         data = self.context.connection.delete_entity(self._path, data=params)
-        entity = self.__class__(self.context, data, self._name)
+        entity = self.__class__(self.context, data, self._name, self._path)
         return entity
 
 
