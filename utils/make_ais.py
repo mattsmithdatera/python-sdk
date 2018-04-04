@@ -51,7 +51,7 @@ if __name__ == "__main__":
                         help="Prefix each AppInstance should use")
     parser.add_argument("-r", "--replica-count", default=3, type=int,
                         help="Number of replicas for volumes, default: 3")
-    parser.add_argument("-m", "--threads", default=5,
+    parser.add_argument("-m", "--threads", default=5, type=int,
                         help="Threads to use for deletion")
     parser.add_argument("--hostname")
     parser.add_argument("--username")
