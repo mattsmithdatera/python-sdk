@@ -45,6 +45,10 @@ def main(args):
     to_delete = set()
 
     filter_strs = set(args.re_filter)
+    if args.stdin:
+        for line in sys.stdin.readlines():
+            filter_strs.add(line.strip())
+
     filters = []
     if args.all:
         filter_strs.add(".*")
@@ -76,8 +80,11 @@ def main(args):
         print(ai[0])
 
     yes = False
-    if not args.yes:
+    if not args.yes and not args.stdin:
         yes = True if input("Y/n\n").strip() in ("Y", "yes") else False
+
+    if args.stdin and len(filter_strs) > 1 and ".*" not in filter_strs:
+        yes = True
 
     if yes or args.yes:
         for _ in range(args.threads):
@@ -90,11 +97,12 @@ def main(args):
 
     return 0
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--re-filter", action="append",
+    parser.add_argument("-f", "--re-filter", action="append", default=[],
                         help="Regex filter to use when matching AppInstances")
-    parser.add_argument("-t", "--tenant", action="append",
+    parser.add_argument("-t", "--tenant", action="append", default=[],
                         help="Tenant Name/ID to search under,"
                              " use 'all' for all tenants")
     parser.add_argument("-a", "--all", action='store_true',
@@ -103,16 +111,18 @@ if __name__ == "__main__":
                         help="DANGER!!! Bypass confirmation prompt")
     parser.add_argument("-m", "--threads", default=5,
                         help="Threads to use for deletion")
+    parser.add_argument("-s", "--stdin", action='store_true',
+                        help="Takes STDIN input list and deletes matching AIs "
+                             "THIS OPTION DOES NOT PROMPT FOR VERIFICATION. "
+                             "You cannot specify '--all' when using stdin")
     parser.add_argument("--hostname")
     parser.add_argument("--username")
     parser.add_argument("--password")
-    parser.add_argument("--api-version", default="v2.1")
+    parser.add_argument("--api-version", default="v2.2")
     args = parser.parse_args()
 
     if not args.tenant and args.username == "admin":
         args.tenant = ['/root']
-    elif not args.tenant and args.username != "admin":
-        args.tenant = ['/root/{}'.format(args.username.strip())]
 
     tenants = []
     for tenant in args.tenant:

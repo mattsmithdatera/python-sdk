@@ -52,7 +52,9 @@ def setup_logging():
         return
     if path in LOGS:
         path = LOGS[path]
-    with open(path) as f:
+    if not os.path.exists(path):
+        io.open(path, 'w+').close()
+    with io.open(path) as f:
         j = json.load(f)
         logging.config.dictConfig(j)
     stdout = os.getenv('DSDK_LOG_STDOUT', None)
