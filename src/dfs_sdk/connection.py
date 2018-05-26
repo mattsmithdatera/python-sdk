@@ -123,11 +123,11 @@ class ApiConnection(object):
           timeout (int or None)
         """
         if secure:
-            sslcontext = ssl._create_unverified_context()
             try:
+                sslcontext = ssl._create_unverified_context()
                 conn = HTTPSConnection(hostname, port=port, timeout=timeout,
                                        context=sslcontext)
-            except TypeError:
+            except (TypeError, AttributeError):
                 conn = HTTPSConnection(hostname, port=port, timeout=timeout)
         else:
             conn = HTTPConnection(hostname, port=port, timeout=timeout)
