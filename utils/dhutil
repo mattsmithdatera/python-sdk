@@ -668,42 +668,7 @@ def op_state_poller(instance):
     sys.exit(FAILURE)
 
 
-def main():
-
-    parser = argparse.ArgumentParser(description='dhutil')
-    parser.add_argument('--basename', action="store", dest="basename")
-    parser.add_argument('--template', action="store", dest="template")
-    parser.add_argument('--createfio', action="store_true")
-    parser.add_argument('--size', action="store", dest="size")
-    parser.add_argument('--count', action="store", dest='count', type=int)
-    parser.add_argument('--numreplicas', action="store", dest='numreplicas',
-                        type=int)
-    parser.add_argument('--cleanall', action="store_true")
-    parser.add_argument('--showall', action="store_true")
-    parser.add_argument('--mkfs', action="store_true")
-    parser.add_argument('--mpmap', action="store_true")
-    parser.add_argument('--dirprefix', action="store", dest='dirprefix')
-    parser.add_argument('--chown', action="store", dest='chown')
-    parser.add_argument('--fstype', action="store", dest='fstype')
-    parser.add_argument('--snappol', action="store", dest="snappol", nargs=2,
-                        metavar=('RETCOUNT', 'INTERVAL'),
-                        help='volume-level snapshot retention count and '
-                             'interval')
-    parser.add_argument('--volperf', action="store", dest="volperf", nargs=2,
-                        metavar=('TOTAL_IOPS_MAX',
-                                 'TOTAL_BANDWIDTH_MAX[KBps]'),
-                        type=int,
-                        help='volume-level iops and bandwidth policies')
-    parser.add_argument('--tenant', action="store",
-                        help='creates tenant with given name. If exists, uses '
-                             'that tenant')
-    parser.add_argument('--version', action="store_true",
-                        help='Specifies the current dhutil version and '
-                             'supported API version')
-    parser.add_argument('--api-version', default='v2.2')
-    parser.add_argument('--disable-checks', action="store_true",
-                        help='Disable requirements checks before running')
-    args = parser.parse_args()
+def main(args):
 
     if args.version:
         version(args)
@@ -883,4 +848,38 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    parser = argparse.ArgumentParser(description='dhutil')
+    parser.add_argument('--basename', action="store", dest="basename")
+    parser.add_argument('--template', action="store", dest="template")
+    parser.add_argument('--createfio', action="store_true")
+    parser.add_argument('--size', action="store", dest="size")
+    parser.add_argument('--count', action="store", dest='count', type=int)
+    parser.add_argument('--numreplicas', action="store", dest='numreplicas',
+                        type=int)
+    parser.add_argument('--cleanall', action="store_true")
+    parser.add_argument('--showall', action="store_true")
+    parser.add_argument('--mkfs', action="store_true")
+    parser.add_argument('--mpmap', action="store_true")
+    parser.add_argument('--dirprefix', action="store", dest='dirprefix')
+    parser.add_argument('--chown', action="store", dest='chown')
+    parser.add_argument('--fstype', action="store", dest='fstype')
+    parser.add_argument('--snappol', action="store", dest="snappol", nargs=2,
+                        metavar=('RETCOUNT', 'INTERVAL'),
+                        help='volume-level snapshot retention count and '
+                             'interval')
+    parser.add_argument('--volperf', action="store", dest="volperf", nargs=2,
+                        metavar=('TOTAL_IOPS_MAX',
+                                 'TOTAL_BANDWIDTH_MAX[KBps]'),
+                        type=int,
+                        help='volume-level iops and bandwidth policies')
+    parser.add_argument('--tenant', action="store",
+                        help='creates tenant with given name. If exists, uses '
+                             'that tenant')
+    parser.add_argument('--version', action="store_true",
+                        help='Specifies the current dhutil version and '
+                             'supported API version')
+    parser.add_argument('--api-version', default='v2.2')
+    parser.add_argument('--disable-checks', action="store_true",
+                        help='Disable requirements checks before running')
+    args = parser.parse_args()
+    sys.exit(main(args))
