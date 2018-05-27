@@ -2,7 +2,6 @@
 from __future__ import (print_function, unicode_literals, division,
                         absolute_import)
 
-import argparse
 import re
 import sys
 import threading
@@ -14,7 +13,7 @@ except ImportError:
 
 from builtins import input
 
-from dfs_sdk.scaffold import getAPI
+from dfs_sdk import scaffold
 
 
 def _add_worker(queue, to_delete, api, filters):
@@ -40,8 +39,8 @@ def _del_worker(queue, api):
 
 
 def main(args):
-    api = getAPI(args.hostname, args.username, args.password, args.api_version,
-                 args.tenant)
+    api = scaffold.getAPI(args.hostname, args.username, args.password,
+                          args.api_version, args.tenant)
     to_delete = set()
 
     filter_strs = set(args.re_filter)
@@ -99,12 +98,9 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = scaffold.get_argparser()
     parser.add_argument("-f", "--re-filter", action="append", default=[],
                         help="Regex filter to use when matching AppInstances")
-    parser.add_argument("-t", "--tenant", action="append", default=[],
-                        help="Tenant Name/ID to search under,"
-                             " use 'all' for all tenants")
     parser.add_argument("-a", "--all", action='store_true',
                         help="Match all AppInstances")
     parser.add_argument("-y", "--yes", action='store_true',
@@ -115,10 +111,6 @@ if __name__ == "__main__":
                         help="Takes STDIN input list and deletes matching AIs "
                              "THIS OPTION DOES NOT PROMPT FOR VERIFICATION. "
                              "You cannot specify '--all' when using stdin")
-    parser.add_argument("--hostname")
-    parser.add_argument("--username")
-    parser.add_argument("--password")
-    parser.add_argument("--api-version", default="v2.2")
     args = parser.parse_args()
 
     if not args.tenant and args.username == "admin":

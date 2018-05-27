@@ -1,6 +1,7 @@
 from __future__ import (print_function, unicode_literals, division,
                         absolute_import)
 
+import argparse
 import io
 import re
 
@@ -43,30 +44,29 @@ def read_cinder_conf():
 
 
 def getAPI(san_ip, san_login, san_password, version=None, tenant=None):
-    csan_ip, csan_login, csan_password, ctenant = None, None, None, None
     try:
         if not all((san_ip, san_login, san_password, tenant)):
             csan_ip, csan_login, csan_password, ctenant = read_cinder_conf()
+            # Set from cinder.conf if they don't exist
+            # This allows overriding some values in cinder.conf
+            if not tenant:
+                tenant = ctenant
+            if not san_ip:
+                san_ip = csan_ip
+            if not san_login:
+                san_login = csan_login
+            if not san_password:
+                san_password = csan_password
+            if tenant and "root" not in tenant and tenant != "all":
+                tenant = "/root/{}".format(tenant)
+            if not tenant:
+                tenant = "/root"
+            if not version:
+                version = "v{}".format(LATEST)
+            else:
+                version = "v{}".format(version.strip("v"))
     except IOError:
         pass
-    # Set from cinder.conf if they don't exist
-    # This allows overriding some values in cinder.conf
-    if not tenant:
-        tenant = ctenant
-    if not san_ip:
-        san_ip = csan_ip
-    if not san_login:
-        san_login = csan_login
-    if not san_password:
-        san_password = csan_password
-    if tenant and "root" not in tenant and tenant != "all":
-        tenant = "/root/{}".format(tenant)
-    if not tenant:
-        tenant = "/root"
-    if not version:
-        version = "v{}".format(LATEST)
-    else:
-        version = "v{}".format(version.strip("v"))
     return get_api(san_ip,
                    san_login,
                    san_password,
@@ -74,3 +74,18 @@ def getAPI(san_ip, san_login, san_password, version=None, tenant=None):
                    tenant=tenant,
                    secure=True,
                    immediate_login=True)
+
+
+def get_argparser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--api-version", default="v{}".format(LATEST),
+                        help="Datera API version to use (default={})".format(
+                            LATEST))
+    parser.add_argument("--hostname", help="Hostname or IP Address of Datera "
+                                           "backend")
+    parser.add_argument("--username", help="Username for Datera account")
+    parser.add_argument("--password", help="Password for Datera account")
+    parser.add_argument("-t", "--tenant", action="append", default=[],
+                        help="Tenant Name/ID to search under,"
+                             " use 'all' for all tenants")
+    return parser
