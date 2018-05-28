@@ -3,8 +3,6 @@ from __future__ import (print_function, unicode_literals, division,
 
 import argparse
 import io
-import json
-import os
 import re
 
 from dfs_sdk import get_api
@@ -18,34 +16,6 @@ SPW = re.compile(r'san_password\s+?=\s+?(?P<san_password>.*)')
 TNT = re.compile(r'datera_tenant_id\s+?=\s+?(?P<tenant_id>.*)')
 
 LATEST = "2.2"
-
-UNIX_HOME = os.path.join(os.path.expanduser('~'))
-UNIX_CONFIG_HOME = os.path.join(UNIX_HOME, 'datera')
-UNIX_SITE_CONFIG_HOME = '/etc/datera'
-CONFIG_SEARCH_PATH = [os.getcwd(), UNIX_HOME, UNIX_CONFIG_HOME,
-                      UNIX_SITE_CONFIG_HOME]
-CONFIGS = [".datera-config", "datera-config", ".datera-config.json",
-           "datera-config.json"]
-
-
-def search_config():
-    for p in CONFIG_SEARCH_PATH:
-        for conf in CONFIGS:
-            fpath = os.path.join(p, conf)
-            if os.path.exists(fpath):
-                return fpath
-    read_cinder_conf()
-    raise EnvironmentError("Could not find Datera config file in the following"
-                           " locations: [{}]".format(CONFIG_SEARCH_PATH))
-
-
-def read_config():
-    try:
-        config_file = search_config()
-    except EnvironmentError:
-        return None
-    with io.open(config_file) as f:
-        return json.loads(f.read())
 
 
 def read_cinder_conf():
@@ -115,12 +85,7 @@ def get_argparser():
                                            "backend")
     parser.add_argument("--username", help="Username for Datera account")
     parser.add_argument("--password", help="Password for Datera account")
-    parser.add_argument("--tenant", action="append", default=[],
+    parser.add_argument("-t", "--tenant", action="append", default=[],
                         help="Tenant Name/ID to search under,"
                              " use 'all' for all tenants")
-    args, _ = parser.parse_known_args()
-    config = read_config()
-    if not config:
-        raise
-    parser = argparse.ArgumentParser(parents=[parser])
     return parser
