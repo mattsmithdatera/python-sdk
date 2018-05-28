@@ -4,7 +4,7 @@ API loading process
 1. Config structure
     ```json
     {
-        "mgmt_ip": "X.X.X.X"
+        "mgmt_ip": "X.X.X.X",
         "username": "some_username",
         "password": "some_password",
         "tenant": "some_tenant",
