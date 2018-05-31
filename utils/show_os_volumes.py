@@ -3,7 +3,6 @@
 from __future__ import (print_function, unicode_literals, division,
                         absolute_import)
 
-import argparse
 import os
 import re
 import subprocess
@@ -11,7 +10,8 @@ import sys
 
 import openstack
 
-from dfs_sdk.scaffold import getAPI
+from dfs_sdk import scaffold
+from dfs_sdk.scaffold import vprint
 
 OS_PREFIX = "OS-"
 UNMANAGE_PREFIX = "UNMANAGED-"
@@ -31,12 +31,6 @@ def usage():
           "OS_PROJECT_NAME must be set")
 
 
-def vprint(*args, **kwargs):
-    global verbose
-    if verbose:
-        print(*args, **kwargs)
-
-
 def exe(cmd):
     vprint("Running cmd:", cmd)
     return subprocess.check_output(cmd, shell=True)
@@ -44,19 +38,11 @@ def exe(cmd):
 
 def main(args):
 
-    global verbose, net_name, netns
-    if args.verbose:
-        verbose = True
-
     tenant = args.tenant
     if args.all_projects_all_tenants:
         tenant = "all"
 
-    api = getAPI(args.san_ip,
-                 args.san_login,
-                 args.san_password,
-                 args.api_version,
-                 tenant)
+    api = scaffold.get_api()
 
     conn = openstack.connect()
 
@@ -111,16 +97,8 @@ def main(args):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--san-ip')
-    parser.add_argument('--san-login')
-    parser.add_argument('--san-password')
-    parser.add_argument('--api-version', default="v2.2")
-    parser.add_argument('--tenant')
+    parser = scaffold.get_argparser()
     parser.add_argument('--all-projects-all-tenants', action='store_true')
     parser.add_argument('--only-os-orphans', action='store_true')
-    parser.add_argument('-v', '--verbose', default=False, action='store_true',
-                        help="Enable verbose output")
-
     args = parser.parse_args()
     sys.exit(main(args))

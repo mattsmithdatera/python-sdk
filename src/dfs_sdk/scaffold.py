@@ -38,6 +38,13 @@ EXAMPLE_CONFIG = {"mgmt_ip": "1.1.1.1",
 
 _CONFIG = {}
 _ARGS = None
+VERBOSE = False
+
+
+def vprint(*args, **kwargs):
+    global VERBOSE
+    if VERBOSE:
+        print(*args, **kwargs)
 
 
 def _search_config():
@@ -141,7 +148,7 @@ def get_config():
 
 
 def get_argparser():
-    global _ARGS
+    global _ARGS, VERBOSE
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--api-version", default="v{}".format(LATEST),
                         help="Datera API version to use (default={})".format(
@@ -154,7 +161,10 @@ def get_argparser():
                         help="Tenant Name/ID to search under,"
                              " use 'all' for all tenants")
     parser.add_argument("--config", help="Config file location")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Enable verbose output")
     args, _ = parser.parse_known_args()
     _ARGS = args
+    VERBOSE = args.verbose
     new_parser = argparse.ArgumentParser(parents=[parser])
     return new_parser
