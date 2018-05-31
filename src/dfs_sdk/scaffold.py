@@ -2,10 +2,14 @@ from __future__ import (print_function, unicode_literals, division,
                         absolute_import)
 
 import argparse
+import copy
 import io
+import json
+import os
 import re
+import pprint
 
-from dfs_sdk import get_api
+from dfs_sdk import get_api as _get_api
 
 IPRE_STR = r'(\d{1,3}\.){3}\d{1,3}'
 IPRE = re.compile(IPRE_STR)
@@ -16,13 +20,58 @@ SPW = re.compile(r'san_password\s+?=\s+?(?P<san_password>.*)')
 TNT = re.compile(r'datera_tenant_id\s+?=\s+?(?P<tenant_id>.*)')
 
 LATEST = "2.2"
+FALLBACK = ["2", "2.1"]
+
+UNIX_HOME = os.path.join(os.path.expanduser('~'))
+UNIX_CONFIG_HOME = os.path.join(UNIX_HOME, 'datera')
+UNIX_SITE_CONFIG_HOME = '/etc/datera'
+CONFIG_SEARCH_PATH = [os.getcwd(), UNIX_HOME, UNIX_CONFIG_HOME,
+                      UNIX_SITE_CONFIG_HOME]
+CONFIGS = [".datera-config", "datera-config", ".datera-config.json",
+           "datera-config.json"]
+CINDER_ETC = "/etc/cinder/cinder.conf"
+
+EXAMPLE_CONFIG = {"mgmt_ip": "1.1.1.1",
+                  "username": "admin",
+                  "password": "password",
+                  "tenant": None}
+
+_CONFIG = {}
+_ARGS = None
 
 
-def read_cinder_conf():
+def _search_config():
+    for p in CONFIG_SEARCH_PATH:
+        for conf in CONFIGS:
+            fpath = os.path.join(p, conf)
+            if os.path.exists(fpath):
+                return fpath
+    if not os.path.exists(CINDER_ETC):
+        raise EnvironmentError(
+            "Could not find Datera config file in the following"
+            " locations: [{}]".format(CONFIG_SEARCH_PATH))
+
+
+def _read_config():
+    global _CONFIG
+    if _ARGS.config:
+        config_file = _ARGS.config
+    else:
+        config_file = _search_config()
+    if not config_file:
+        _CONFIG = _read_cinder_conf()
+    else:
+        with io.open(config_file) as f:
+            _CONFIG = json.loads(f.read())
+
+
+def _read_cinder_conf():
+    if not os.path.exists(CINDER_ETC):
+        return
     data = None
     found_index = 0
     found_last_index = -1
-    with io.open('/etc/cinder/cinder.conf') as f:
+    with io.open(CINDER_ETC) as f:
         for index, line in enumerate(f):
             if '[datera]' == line.strip().lower():
                 found_index = index
@@ -31,7 +80,7 @@ def read_cinder_conf():
             if '[' in line and ']' in line:
                 found_last_index = index + found_index
                 break
-    with io.open('/etc/cinder/cinder.conf') as f:
+    with io.open(CINDER_ETC) as f:
         data = "".join(f.readlines()[
             found_index:found_last_index])
     san_ip = SIP.search(data).group('san_ip')
@@ -40,44 +89,60 @@ def read_cinder_conf():
     tenant = TNT.search(data)
     if tenant:
         tenant = tenant.group('tenant_id')
-    return san_ip, san_login, san_password, tenant
+    return {"mgmt_ip": san_ip,
+            "username": san_login,
+            "password": san_password,
+            "tenant": tenant,
+            "api_version": LATEST}
 
 
-def getAPI(san_ip, san_login, san_password, version=None, tenant=None):
-    try:
-        if not all((san_ip, san_login, san_password, tenant)):
-            csan_ip, csan_login, csan_password, ctenant = read_cinder_conf()
-            # Set from cinder.conf if they don't exist
-            # This allows overriding some values in cinder.conf
-            if not tenant:
-                tenant = ctenant
-            if not san_ip:
-                san_ip = csan_ip
-            if not san_login:
-                san_login = csan_login
-            if not san_password:
-                san_password = csan_password
-            if tenant and "root" not in tenant and tenant != "all":
-                tenant = "/root/{}".format(tenant)
-            if not tenant:
-                tenant = "/root"
-            if not version:
-                version = "v{}".format(LATEST)
-            else:
-                version = "v{}".format(version.strip("v"))
-    except IOError:
-        pass
-    return get_api(san_ip,
-                   san_login,
-                   san_password,
-                   version,
-                   tenant=tenant,
-                   secure=True,
-                   immediate_login=True)
+def _cli_override():
+    if _ARGS.hostname:
+        _CONFIG["mgmt_ip"] = _ARGS.hostname
+    if _ARGS.username:
+        _CONFIG["username"] = _ARGS.username
+    if _ARGS.password:
+        _CONFIG["password"] = _ARGS.password
+    if _ARGS.tenant:
+        _CONFIG["tenant"] = _ARGS.tenant
+    if _ARGS.api_version:
+        _CONFIG["api_version"] = _ARGS.api_version
+
+
+def get_api():
+    _read_config()
+    _cli_override()
+    tenant = _CONFIG["tenant"]
+    if tenant and "root" not in tenant and tenant != "all":
+        tenant = "/root/{}".format(tenant)
+    if not tenant:
+        tenant = "/root"
+    if not _CONFIG["api_version"]:
+        version = "v{}".format(LATEST)
+    else:
+        version = "v{}".format(_CONFIG["api_version"].strip("v"))
+    return _get_api(_CONFIG["mgmt_ip"],
+                    _CONFIG["username"],
+                    _CONFIG["password"],
+                    version,
+                    tenant=tenant,
+                    secure=True,
+                    immediate_login=True)
+
+
+def print_config():
+    config = copy.deepcopy(_CONFIG)
+    config["password"] = "******"
+    pprint.pprint(config)
+
+
+def get_config():
+    return copy.deepcopy(_CONFIG)
 
 
 def get_argparser():
-    parser = argparse.ArgumentParser()
+    global _ARGS
+    parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--api-version", default="v{}".format(LATEST),
                         help="Datera API version to use (default={})".format(
                             LATEST))
@@ -85,7 +150,11 @@ def get_argparser():
                                            "backend")
     parser.add_argument("--username", help="Username for Datera account")
     parser.add_argument("--password", help="Password for Datera account")
-    parser.add_argument("-t", "--tenant", action="append", default=[],
+    parser.add_argument("--tenant", action="append", default=[],
                         help="Tenant Name/ID to search under,"
                              " use 'all' for all tenants")
-    return parser
+    parser.add_argument("--config", help="Config file location")
+    args, _ = parser.parse_known_args()
+    _ARGS = args
+    new_parser = argparse.ArgumentParser(parents=[parser])
+    return new_parser
