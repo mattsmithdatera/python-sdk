@@ -39,8 +39,8 @@ def _del_worker(queue, api):
 
 
 def main(args):
-    api = scaffold.getAPI(args.hostname, args.username, args.password,
-                          args.api_version, args.tenant)
+    api = scaffold.get_api()
+    config = scaffold.get_config()
     to_delete = set()
 
     filter_strs = set(args.re_filter)
@@ -56,12 +56,11 @@ def main(args):
         filters.append(re.compile(f))
 
     tqueue = Queue()
-    if args.tenant == "ALL":
+    if config["tenant"] in ["all", "ALL"]:
         for tenant in api.tenants.list():
             tqueue.put(tenant['path'])
     else:
-        for tenant in args.tenant:
-            tqueue.put(tenant)
+        tqueue.put(config["tenant"])
 
     for _ in range(args.threads):
         thread = threading.Thread(target=_add_worker,
@@ -73,7 +72,9 @@ def main(args):
 
     to_delete_queue = Queue()
     to_delete = sorted(to_delete)
-    print("Delete These AppInstances?")
+    print("Using CONFIG:")
+    scaffold.print_config()
+    print("Delete These AppInstances from {}?".format(config["mgmt_ip"]))
     for ai in to_delete:
         to_delete_queue.put(ai)
         print(ai[0])
@@ -112,24 +113,6 @@ if __name__ == "__main__":
                              "THIS OPTION DOES NOT PROMPT FOR VERIFICATION. "
                              "You cannot specify '--all' when using stdin")
     args = parser.parse_args()
-
-    if not args.tenant and args.username == "admin":
-        args.tenant = ['/root']
-
-    tenants = []
-    for tenant in args.tenant:
-        if tenant == "all":
-            tenants = "ALL"
-            break
-        if args.username == "admin" and "root" not in tenant:
-            t = "/root/{}".format(tenant.strip("/"))
-            tenants.append(t)
-        else:
-            tenants.append(tenant)
-    args.tenant = tenants
-
-    if not args.re_filter:
-        args.re_filter = []
 
     main(args)
     sys.exit(0)
