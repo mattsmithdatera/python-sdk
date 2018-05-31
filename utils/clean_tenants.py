@@ -2,16 +2,15 @@
 from __future__ import (print_function, unicode_literals, division,
                         absolute_import)
 
-import argparse
 import sys
 
 from builtins import input
 
-from dfs_sdk.scaffold import getAPI
+from dfs_sdk import scaffold
 
 
 def main(args):
-    api = getAPI(args.hostname, args.username, args.password, args.api_version)
+    api = scaffold.get_api()
     to_delete = []
     for tenant in api.tenants.list():
         if tenant['path'].endswith('root'):
@@ -48,8 +47,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
+    parser = scaffold.get_argparser()
     parser.add_argument("-c", "--clean", action='store_true',
                         help="Clean empty tenants")
     parser.add_argument("-o", "--openstack-only", action='store_true',
@@ -58,10 +56,6 @@ if __name__ == "__main__":
                         help="DANGER!!! Bypass confirmation prompt")
     parser.add_argument("-n", "--non-empty", action='store_true',
                         help="Clean non-empty tenants as well")
-    parser.add_argument("--hostname")
-    parser.add_argument("--username")
-    parser.add_argument("--password")
-    parser.add_argument("--api-version", default="v2.1")
     args = parser.parse_args()
     main(args)
     sys.exit(0)
