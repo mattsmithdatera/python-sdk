@@ -2,7 +2,6 @@
 from __future__ import (print_function, unicode_literals, division,
                         absolute_import)
 
-import argparse
 import sys
 import threading
 try:
@@ -10,7 +9,7 @@ try:
 except ImportError:
     from queue import Queue
 
-from dfs_sdk.scaffold import getAPI
+from dfs_sdk import scaffold
 
 
 def _worker(api, queue):
@@ -25,7 +24,7 @@ def _worker(api, queue):
 
 
 def main(args):
-    api = getAPI(args.hostname, args.username, args.password, args.api_version)
+    api = scaffold.get_api()
 
     # Populate Queue
     ai_names = Queue()
@@ -41,8 +40,9 @@ def main(args):
 
     ai_names.join()
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = scaffold.get_argparser()
     parser.add_argument("-n", "--number", default=5, type=int,
                         help="Number of AppInstances")
     parser.add_argument("-s", "--size", default=1, type=int,
@@ -53,10 +53,6 @@ if __name__ == "__main__":
                         help="Number of replicas for volumes, default: 3")
     parser.add_argument("-m", "--threads", default=5, type=int,
                         help="Threads to use for deletion")
-    parser.add_argument("--hostname")
-    parser.add_argument("--username")
-    parser.add_argument("--password")
-    parser.add_argument("--api-version", default="v2.1")
     args = parser.parse_args()
 
     main(args)
