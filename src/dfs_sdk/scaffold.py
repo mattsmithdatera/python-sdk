@@ -6,8 +6,9 @@ import copy
 import io
 import json
 import os
-import re
 import pprint
+import re
+import sys
 
 from dfs_sdk import get_api as _get_api
 
@@ -34,11 +35,38 @@ CINDER_ETC = "/etc/cinder/cinder.conf"
 EXAMPLE_CONFIG = {"mgmt_ip": "1.1.1.1",
                   "username": "admin",
                   "password": "password",
-                  "tenant": None}
+                  "tenant": None,
+                  "api_version": "2.2"}
+
+ENV_MGMT = "DAT_MGMT"
+ENV_USER = "DAT_USER"
+ENV_PASS = "DAT_PASS"
+ENV_TENANT = "DAT_TENANT"
+ENV_API = "DAT_API"
+
+ENV_HELP = {ENV_MGMT: "Datera management IP address or hostname",
+            ENV_USER: "Datera account username",
+            ENV_PASS: "Datera account password",
+            ENV_TENANT: "Datera tenant ID. eg: SE-OpenStack",
+            ENV_API: "Datera API version. eg: 2.2"}
 
 _CONFIG = {}
 _ARGS = None
 VERBOSE = False
+
+
+def _print_envs():
+    print()
+    print("DATERA ENVIRONMENT VARIABLES")
+    print("============================")
+    longest = 0
+    for key in ENV_HELP:
+        if len(key) > longest:
+            longest = len(key)
+    for key, help in sorted(ENV_HELP.items()):
+        buff = " " * (longest - len(key))
+        print("{}{} -- {}".format(buff, key, help))
+    print()
 
 
 def vprint(*args, **kwargs):
@@ -53,10 +81,18 @@ def _search_config():
             fpath = os.path.join(p, conf)
             if os.path.exists(fpath):
                 return fpath
-    if not os.path.exists(CINDER_ETC):
+
+
+def _check_config(config_file):
+    missing = []
+    for key in EXAMPLE_CONFIG:
+        if key not in _CONFIG:
+            missing.append(key)
+    if missing:
         raise EnvironmentError(
-            "Could not find Datera config file in the following"
-            " locations: [{}]".format(CONFIG_SEARCH_PATH))
+            "All config options must be specified by config file, environment "
+            "variable or CLI argument. Missing config keys: {}, config_file: "
+            "{}".format(missing, config_file))
 
 
 def _read_config():
@@ -70,6 +106,11 @@ def _read_config():
     else:
         with io.open(config_file) as f:
             _CONFIG = json.loads(f.read())
+    if _CONFIG is None:
+        _CONFIG = {}
+    _env_override()
+    _cli_override()
+    _check_config(config_file)
 
 
 def _read_cinder_conf():
@@ -116,9 +157,21 @@ def _cli_override():
         _CONFIG["api_version"] = _ARGS.api_version
 
 
+def _env_override():
+    if ENV_MGMT in os.environ:
+        _CONFIG["mgmt_ip"] = os.environ[ENV_MGMT]
+    if ENV_USER in os.environ:
+        _CONFIG["username"] = os.environ[ENV_USER]
+    if ENV_PASS in os.environ:
+        _CONFIG["password"] = os.environ[ENV_PASS]
+    if ENV_TENANT in os.environ:
+        _CONFIG["tenant"] = os.environ[ENV_TENANT]
+    if ENV_API in os.environ:
+        _CONFIG["api_version"] = os.environ[ENV_API]
+
+
 def get_api():
     _read_config()
-    _cli_override()
     tenant = _CONFIG["tenant"]
     if tenant and "root" not in tenant and tenant != "all":
         tenant = "/root/{}".format(tenant)
@@ -161,10 +214,15 @@ def get_argparser():
                         help="Tenant Name/ID to search under,"
                              " use 'all' for all tenants")
     parser.add_argument("--config", help="Config file location")
+    parser.add_argument("--print-envs", action="store_true",
+                        help="Print supported environment variables")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Enable verbose output")
     args, _ = parser.parse_known_args()
     _ARGS = args
     VERBOSE = args.verbose
+    if args.print_envs:
+        _print_envs()
+        sys.exit(0)
     new_parser = argparse.ArgumentParser(parents=[parser])
     return new_parser

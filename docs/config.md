@@ -21,6 +21,7 @@ Example (not set in stone):
 
 This configuration file could be placed in a number of locations
     * passed in as a CLI flag
+    * set via environment Variables
     * current directory
     * $HOME
     * $HOME/.config
@@ -161,17 +162,30 @@ API loading process
         "api_version": "2.2"
     }
     ```
-
-2. User executes script
+2. Environment Variables (sourceable file)
+    ```bash
+    DAT_MGMT=X.X.X.X
+    DAT_USER=admin
+    DAT_PASS=password
+    DAT_TENANT=/root
+    DAT_API=2.2
+    ```
+3. User executes script
     1. User provides credentials via CLI
-    2. User provides credentials via config file (.datera-config/datera-config)
+    2. User provides credentials via environment variables
+        1. DAT_MGMT
+        2. DAT_USER
+        3. DAT_PASS
+        4. DAT_TENANT
+        5. DAT_API
+    3. User provides credentials via config file (.datera-config/datera-config)
         1. local directory
         2. $HOME folder
         3. $HOME/.config/datera folder
         4. /etc/datera folder
-    3. User provides credentials via /etc/cinder/cinder.conf
+    4. User provides credentials via /etc/cinder/cinder.conf
 
-3. This means load priority is
+4. This means load priority is
     1. CLI opts
     2. local folder config file
     3. $HOME folder config file
@@ -179,5 +193,5 @@ API loading process
     5. /etc/datera config file
     6. /etc/cinder/cinder.conf
 
-4. Config is loaded
-5. API object is created from config
+5. Config is loaded
+6. API object is created from config
