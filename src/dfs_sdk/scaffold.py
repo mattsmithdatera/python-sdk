@@ -35,14 +35,24 @@ CINDER_ETC = "/etc/cinder/cinder.conf"
 EXAMPLE_CONFIG = {"mgmt_ip": "1.1.1.1",
                   "username": "admin",
                   "password": "password",
-                  "tenant": None,
+                  "tenant": "/root",
                   "api_version": "2.2"}
+DATERA_RC = "datrc"
 
 ENV_MGMT = "DAT_MGMT"
 ENV_USER = "DAT_USER"
 ENV_PASS = "DAT_PASS"
 ENV_TENANT = "DAT_TENANT"
 ENV_API = "DAT_API"
+
+EXAMPLE_RC = """\
+# DATERA ENVIRONMENT VARIABLES
+{}=1.1.1.1
+{}=admin
+{}=password
+{}=/root
+{}=2.2
+""".format(ENV_MGMT, ENV_USER, ENV_PASS, ENV_TENANT, ENV_API)
 
 ENV_HELP = {ENV_MGMT: "Datera management IP address or hostname",
             ENV_USER: "Datera account username",
@@ -69,10 +79,21 @@ def _print_envs():
     print()
 
 
-def vprint(*args, **kwargs):
-    global VERBOSE
-    if VERBOSE:
-        print(*args, **kwargs)
+def _gen_config():
+    if _ARGS.gen_config == "json":
+        if any((os.path.exists(c) for c in CONFIGS)):
+            print("Config file already exists in current directory.  Please "
+                  "move or remove it before generating a new one")
+            sys.exit(1)
+        with io.open(CONFIGS[-1], 'w+') as f:
+            json.dump(EXAMPLE_CONFIG, f, indent=4)
+    elif _ARGS.gen_config == "shell":
+        if os.path.exists(DATERA_RC):
+            print("RC file already exists in current directory. Please move "
+                  "or remove it before generating a new one")
+            sys.exit(1)
+        with io.open(DATERA_RC, 'w+') as f:
+            f.write(EXAMPLE_RC)
 
 
 def _search_config():
@@ -170,6 +191,12 @@ def _env_override():
         _CONFIG["api_version"] = os.environ[ENV_API]
 
 
+def vprint(*args, **kwargs):
+    global VERBOSE
+    if VERBOSE:
+        print(*args, **kwargs)
+
+
 def get_api():
     _read_config()
     tenant = _CONFIG["tenant"]
@@ -216,6 +243,8 @@ def get_argparser():
     parser.add_argument("--config", help="Config file location")
     parser.add_argument("--print-envs", action="store_true",
                         help="Print supported environment variables")
+    parser.add_argument("--gen-config", choices=["json", "shell"],
+                        help="Generate example config")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Enable verbose output")
     args, _ = parser.parse_known_args()
@@ -223,6 +252,9 @@ def get_argparser():
     VERBOSE = args.verbose
     if args.print_envs:
         _print_envs()
+        sys.exit(0)
+    if args.gen_config:
+        _gen_config()
         sys.exit(0)
     new_parser = argparse.ArgumentParser(parents=[parser])
     return new_parser
