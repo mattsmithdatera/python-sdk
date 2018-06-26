@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='dfs_sdk',
-    version='1.2.2',
+    version='1.2.7',
     description='Datera Fabric Python SDK',
     long_description='Install Instructions: sudo python setup.py install',
     author='Datera Automation Team',

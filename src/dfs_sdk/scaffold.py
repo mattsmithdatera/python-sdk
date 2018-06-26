@@ -197,7 +197,7 @@ def vprint(*args, **kwargs):
         print(*args, **kwargs)
 
 
-def get_api():
+def get_api(**kwargs):
     _read_config()
     tenant = _CONFIG["tenant"]
     if tenant and "root" not in tenant and tenant != "all":
@@ -214,7 +214,8 @@ def get_api():
                     version,
                     tenant=tenant,
                     secure=True,
-                    immediate_login=True)
+                    immediate_login=True,
+                    **kwargs)
 
 
 def print_config():
