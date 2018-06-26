@@ -4,7 +4,7 @@ since many other modules import this one
 """
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-VERSION = "1.2.6"
+VERSION = "1.2.7"
 
 VERSION_HISTORY = """
 Version History:
@@ -19,6 +19,9 @@ Version History:
     1.2.4 -- Named object support, hw metics support
     1.2.5 -- v2.2 Paging support
     1.2.6 -- Bugfix for API v2.1 limit parameter
+    1.2.7 -- Changed connection to use requests library, added support for
+             logs_upload endpoint.  Added 'strict' parameter to constructor
+             which allows disabling endpoint validity checks if set to 'False'
 """
 
 API_VERSIONS = ("v2", "v2.1", "v2.2")
