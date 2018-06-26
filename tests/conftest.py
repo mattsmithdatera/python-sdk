@@ -28,9 +28,10 @@ def mock_api_21():
         ctxt_mock.password = "password"
         ctxt_mock._reader = mock.Mock()
         con = ApiConnection(ctxt_mock)
+        # con.login = mock.Mock()
         resp_data = load_asset("api_endpoint_21.txt")
-        http.side_effect = [(b'{"key": "84c457eb414c4ab5a472292c4bc2b1c1",'
-                            b'"version": "v2.1"}', 200, "", {}),
+        http.side_effect = [({"key": "84c457eb414c4ab5a472292c4bc2b1c1",
+                              "version": "v2.1"}, 200, "", {}),
                             (resp_data, 200, "", {})]
         con._http_connect_request = http
         ctxt_mock.connection = con

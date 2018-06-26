@@ -1,4 +1,5 @@
 import io
+import json
 import os
 
 
@@ -9,4 +10,4 @@ DATA = os.path.join(
 def load_asset(name):
     n = os.path.join(DATA, name)
     with io.open(n) as f:
-        return f.read().encode('utf-8')
+        return json.loads(f.read())

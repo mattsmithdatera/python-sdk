@@ -45,8 +45,7 @@ def test_exception_imports():
 
 def test_api_21_mocks(mock_api_21):
     api, con = mock_api_21
-    resp = b"""
-        {
+    resp = {
       "tenant": "/root",
       "path": "/app_instances",
       "version": "v2.1",
@@ -55,7 +54,6 @@ def test_api_21_mocks(mock_api_21):
         "total": 0
       }
     }
-    """
     update_side_effect(con, (resp, 200, "", {}))
     api.app_instances.list()
 
