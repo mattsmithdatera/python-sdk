@@ -16,5 +16,5 @@ setup(
     install_requires=[],
     scripts=['utils/dhutil'],
     url='https://github.com/Datera/python-sdk/',
-    download_url='https://github.com/Datera/python-sdk/tarball/v1.2.1'
+    download_url='https://github.com/Datera/python-sdk/tarball/v1.2.7'
 )
