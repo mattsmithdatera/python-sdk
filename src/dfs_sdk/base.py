@@ -347,7 +347,9 @@ class GenericEndpoint(Endpoint):
         return entity
 
     def upload(self, **params):
-        data = self.context.connection.upload_endpoint(self._path, params)
+        files = params.pop('files')
+        data = self.context.connection.upload_endpoint(
+            self._path, files, params)
         return data
 
     def set(self, **params):

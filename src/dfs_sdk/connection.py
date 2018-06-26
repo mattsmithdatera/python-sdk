@@ -1,11 +1,12 @@
 """
 Provides the ApiConnection class
 """
-import io
-import os
-import json
-import threading
 import functools
+import io
+import json
+import os
+import threading
+import urllib3
 
 import requests
 
@@ -23,6 +24,9 @@ __copyright__ = "Copyright 2017, Datera, Inc."
 
 LOG = get_log(__name__)
 CACHED_SCHEMA = ".cached-schema"
+
+# TODO(_alastor_): Add certificate verification
+urllib3.disable_warnings()
 
 
 def _with_authentication(method):
@@ -93,8 +97,8 @@ class ApiConnection(object):
         self.reader = None
         self._logged_in = False
 
-    def _http_connect_request(self, method, urlpath,
-                              headers=None, params=None, body=None):
+    def _http_connect_request(self, method, urlpath, headers=None, params=None,
+                              body=None, files=None):
         if self._secure:
             protocol = 'https'
             port = REST_PORT_HTTPS
@@ -108,17 +112,24 @@ class ApiConnection(object):
                 protocol, host, port, api_version.strip('v'),
                 urlpath.strip('/'))
         try:
+            LOG.debug("REST: %s, %s, %s, %s, %s, %s", connection_string,
+                      method, str(params), str(headers), str(body), str(files))
             resp = getattr(requests, method.lower())(
                     connection_string, headers=headers, params=params,
-                    data=body, verify=False)
+                    data=body, verify=False, files=files)
         except requests.ConnectionError as e:
             raise ApiConnectionError(e, '')
         except requests.Timeout as e:
             raise ApiTimeoutError(e, '')
-        resp_data = resp.json()
+        if files:
+            resp_data = {}
+        else:
+            resp_data = resp.json()
         resp_status = resp.status_code
         resp_reason = resp.reason
         resp_headers = resp.headers
+        self._assert_response_successful(
+            method, urlpath, body, resp_data, resp_status, resp_reason)
         return (resp_data, resp_status, resp_reason, resp_headers)
 
     def _get_schema(self, endpoint):
@@ -233,12 +244,13 @@ class ApiConnection(object):
         else:
             raise ApiError(msg, resp_data)
 
-    def _do_request(self, method, urlpath, data=None, params=None):
+    def _do_request(self, method, urlpath, files=None, data=None, params=None):
         """
         Handle the aggregation of different pages for the request
         """
         resp_meta, resp_data = \
-            self._do_auth_request(method, urlpath, data, params)
+            self._do_auth_request(method, urlpath, data=data, params=params,
+                                  files=files)
 
         # No metadata means no pagination
         if "metadata" not in resp_meta:
@@ -276,7 +288,8 @@ class ApiConnection(object):
         return resp_meta, resp_data
 
     @_with_authentication
-    def _do_auth_request(self, method, urlpath, data=None, params=None):
+    def _do_auth_request(self, method, urlpath, files=None, data=None,
+                         params=None):
         """
         Translates to/from JSON as needed, calls _http_connect_request()
         Bubbles up ApiError on error
@@ -301,19 +314,20 @@ class ApiConnection(object):
         # Auth-Token header
         if self._key:
             headers["Auth-Token"] = self._key
-        # content-type header
-        headers["content-type"] = "application/json; charset=utf-8"
-
         if data is None:
             body = None
         elif isinstance(data, str):
+            body = data
+        elif files is not None:
+            # Requests can't push a string and a file at the same time, so we
+            # just pass the data as a normal python dict
             body = data
         else:
             body = json.dumps(data)
 
         parsed_data, resp_status, resp_reason, _resp_headers = \
             self._http_connect_request(method, urlpath, params=params,
-                                       body=body, headers=headers)
+                                       body=body, headers=headers, files=files)
 
         ret_metadata = {}
         ret_data = parsed_data
@@ -385,6 +399,8 @@ class ApiConnection(object):
         return data
 
     def upload_endpoint(self, path, files, data):
+
+        # files = {'file': (file_name, io.open(file_name, 'rb'))}
         _metadata, data = self._do_request("PUT", path, data=data,
                                            files=files)
 
