@@ -1,5 +1,7 @@
 six
 future
+requests
+urllib3
 
 # Tests only
 pytest
