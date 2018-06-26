@@ -38,15 +38,10 @@ def exe(cmd):
 
 def main(args):
 
-    tenant = args.tenant
-    if args.all_projects_all_tenants:
-        tenant = "all"
-
     api = scaffold.get_api()
 
     conn = openstack.connect()
-
-    if tenant == "all":
+    if args.all_projects_all_tenants:
         ids = exe("openstack volume list --all-projects --format value | "
                   "awk '{print $1}'").split("\n")
         vols = {"OS-{}".format(vid) for vid in ids if vid}
@@ -69,21 +64,22 @@ def main(args):
         vols = {"OS-{}".format(vol.id) for vol in conn.block_storage.volumes()}
         vols = vols.union(
                 {"OS-{}".format(img.id) for img in conn.image.images()})
-    ais = api.app_instances.list()
 
     non_os = set()
+    ais = api.app_instances.list()
     for ai in ais:
         if ai['name'] not in vols:
             non_os.add(ai['name'])
 
-    pdisplay = "all" if tenant == "all" else os.getenv("OS_PROJECT_NAME")
+    pdisplay = "all" if args.all_projects_all_tenants else os.getenv(
+        "OS_PROJECT_NAME")
     if args.only_os_orphans:
         for ai in sorted(non_os):
             if UUID4_RE.match(ai):
                 print(ai)
     else:
         print("OpenStack Project:", pdisplay)
-        print("Datera Tenant: ", api._context.tenant)
+        print("Datera Tenant: ", scaffold.get_config()["tenant"])
         print()
         print("Datera OpenStack AIs")
         print("--------------------")
@@ -100,5 +96,6 @@ if __name__ == "__main__":
     parser = scaffold.get_argparser()
     parser.add_argument('--all-projects-all-tenants', action='store_true')
     parser.add_argument('--only-os-orphans', action='store_true')
+    parser.add_argument('--only-cached-images', action='store_true')
     args = parser.parse_args()
     sys.exit(main(args))

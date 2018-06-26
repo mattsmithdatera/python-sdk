@@ -314,6 +314,9 @@ class ApiConnection(object):
         # Auth-Token header
         if self._key:
             headers["Auth-Token"] = self._key
+        if not files:
+            # content-type header
+            headers["content-type"] = "application/json; charset=utf-8"
         if data is None:
             body = None
         elif isinstance(data, str):
