@@ -31,7 +31,8 @@ VERSION_MAP = {"v2": _DateraApi,
                "v2.2": _DateraApi22}
 
 
-def get_api(hostname, username, password, version, tenant=None, **kwargs):
+def get_api(hostname, username, password, version, tenant=None, strict=True,
+            **kwargs):
     """Main entrypoint into the SDK
 
     Returns a DateraApi object
@@ -53,7 +54,9 @@ def get_api(hostname, username, password, version, tenant=None, **kwargs):
                                 username=username,
                                 password=password,
                                 tenant=tenant,
+                                strict=strict,
                                 **kwargs)
+
 
 __all__ = ['get_api',
            'ApiError',

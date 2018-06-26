@@ -3,15 +3,11 @@ Provides the ApiConnection class
 """
 import io
 import os
-import sys
-import socket
 import json
 import threading
 import functools
-import collections
-import ssl
 
-import six
+import requests
 
 from .exceptions import ApiError
 from .exceptions import ApiAuthError, ApiConnectionError, ApiTimeoutError
@@ -19,27 +15,11 @@ from .exceptions import ApiInternalError, ApiNotFoundError
 from .exceptions import ApiInvalidRequestError, ApiConflictError
 from .exceptions import ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
-from .constants import PYTHON_3_0_0_HEXVERSION
 from .constants import VERSION
 from .dlogging import get_log
 from .schema.reader import get_reader
 
 __copyright__ = "Copyright 2017, Datera, Inc."
-
-if sys.hexversion >= PYTHON_3_0_0_HEXVERSION:
-    # Python 3
-    from http.client import HTTPConnection  # noqa pylint: disable=import-error
-    from http.client import HTTPException  # noqa pylint: disable=import-error
-    # noqa pylint: disable=import-error
-    from http.client import HTTPSConnection
-    # noqa pylint: disable=import-error,no-name-in-module
-    from urllib.parse import quote as encode_url
-else:
-    # Python 2
-    from httplib import HTTPConnection  # noqa pylint: disable=import-error
-    from httplib import HTTPException  # noqa pylint: disable=import-error
-    from httplib import HTTPSConnection  # noqa pylint: disable=import-error
-    from urllib import quote as encode_url  # noqa pylint: disable=import-error
 
 LOG = get_log(__name__)
 CACHED_SCHEMA = ".cached-schema"
@@ -113,112 +93,32 @@ class ApiConnection(object):
         self.reader = None
         self._logged_in = False
 
-    @staticmethod
-    def _get_http_connection(secure, hostname, port, timeout):
-        """
-        Returns an HTTPConnection or HTTPSConnection instance
-          secure (bool) - If True use HTTPS, if False use HTTP
-          hostname (str) - Cluster VIP
-          port (int)
-          timeout (int or None)
-        """
-        if secure:
-            try:
-                sslcontext = ssl._create_unverified_context()
-                conn = HTTPSConnection(hostname, port=port, timeout=timeout,
-                                       context=sslcontext)
-            except (TypeError, AttributeError):
-                conn = HTTPSConnection(hostname, port=port, timeout=timeout)
-        else:
-            conn = HTTPConnection(hostname, port=port, timeout=timeout)
-        return conn
-
     def _http_connect_request(self, method, urlpath,
                               headers=None, params=None, body=None):
-        """
-        Sends the HTTP request
-        Parameters:
-          method (str) - "GET", "POST", "PUT", or "DELETE"
-          urlpath (str) - e.g. "/v2.1/system"
-          headers (dict) - Request headers
-          params (dict) - URL query parameters
-          body (str) - payload to send
-        Returns a (resp_data, resp_status, resp_reason, reap_headers) tuple
-          resp_data (str)
-          resp_status (int)
-          resp_reason (str)
-          resp_headers - list of (key, val) tuples
-        Raises ApiTimeoutError or ApiConnectionError on connection error.
-        Raises an ApiError subclass on all other errors
-        """
-
-        if not urlpath.startswith('/'):
-            raise ValueError("Invalid URL path")
-        # Handle special characters present in the path
-        urlpath = encode_url(urlpath, safe='/:.-')
-
-        if params:
-            count = 0
-            for key, val in params.items():
-                # if val is a bool or int, convert to str:
-                if val is True:
-                    val = "true"
-                elif val is False:
-                    val = "false"
-                else:
-                    val = str(val)
-                # add it to the query url
-                if count > 0:
-                    urlpath += "&"
-                if count == 0:
-                    urlpath += "?"
-                urlpath += "=".join([key, encode_url(val, safe='(),')])
-                count += 1
-
-        if headers is None:
-            headers = self.HEADER_DATA
+        if self._secure:
+            protocol = 'https'
+            port = REST_PORT_HTTPS
         else:
-            headers.update(self.HEADER_DATA)
+            protocol = 'http'
+            port = REST_PORT
+        api_version = self._version
+        host = self._hostname
 
+        connection_string = '{}://{}:{}/v{}/{}'.format(
+                protocol, host, port, api_version.strip('v'),
+                urlpath.strip('/'))
         try:
-            if self._secure:
-                port = REST_PORT_HTTPS
-            else:
-                port = REST_PORT
-            conn = self._get_http_connection(self._secure,
-                                             self._hostname, port,
-                                             self._timeout)
-            LOG.debug("REST send: method=" + str(method) +
-                      " hostname=" + str(self._hostname) +
-                      " port=" + str(port) +
-                      " urlpath=" + str(urlpath) +
-                      " headers=" + str(headers) +
-                      " body=" + str(body))
-            conn.request(method, urlpath, body=body, headers=headers)
-            resp = conn.getresponse()
-            resp_status = resp.status     # e.g. 200
-            resp_reason = resp.reason    # e.g. 'OK'
-            resp_headers = resp.getheaders()   # list of (key,val) tuples
-            resp_data = resp.read()
-            conn.close()
-        except (socket.error, HTTPException) as ex:
-            # If network error, raise exception:
-            msg = str(ex)
-            msg += "\nIP: " + str(self._hostname)
-            if isinstance(ex, socket.timeout):
-                exclass = ApiTimeoutError
-            else:
-                exclass = ApiConnectionError
-            six.reraise(exclass, exclass(msg), sys.exc_info()[-1])
-        # Debug log response:
-        msg = "REST recv: status=" + str(resp_status) + \
-              " reason=" + str(resp_reason) + \
-              " headers=" + str(resp_headers) + \
-              " data=\n" + str(resp_data)
-        LOG.debug(msg)
-        # If API returned an error, raise exception:
-        self._assert_response_successful(method, urlpath, body,
-                                         resp_data, resp_status, resp_reason)
+            resp = getattr(requests, method.lower())(
+                    connection_string, headers=headers, params=params,
+                    data=body, verify=False)
+        except requests.ConnectionError as e:
+            raise ApiConnectionError(e, '')
+        except requests.Timeout as e:
+            raise ApiTimeoutError(e, '')
+        resp_data = resp.json()
+        resp_status = resp.status_code
+        resp_reason = resp.reason
+        resp_headers = resp.headers
         return (resp_data, resp_status, resp_reason, resp_headers)
 
     def _get_schema(self, endpoint):
@@ -264,19 +164,13 @@ class ApiConnection(object):
 
         headers = {}
         headers["content-type"] = "application/json; charset=utf-8"
-        urlpath = "/" + self._version + "/login"
+        urlpath = "/login"
         method = "PUT"
-        resp_data, resp_status, resp_reason, resp_hdrs = \
+        resp_dict, resp_status, resp_reason, resp_hdrs = \
             self._http_connect_request(method, urlpath, body=body,
                                        headers=headers)
-        resp_data = _make_unicode_string(resp_data)
-        try:
-            resp_dict = json.loads(resp_data)
-        except ValueError:
-            raise ApiError("Login failed: " + repr(resp_data))
-
         if 'key' not in resp_dict or not resp_dict['key']:
-            raise ApiAuthError("No auth key returned", resp_data)
+            raise ApiAuthError("No auth key returned", resp_dict)
         key = str(resp_dict['key'])
         with self._lock:
             self._key = key
@@ -294,7 +188,7 @@ class ApiConnection(object):
         headers = dict()
         headers["content-type"] = "application/json; charset=utf-8"
         headers["auth-token"] = key
-        urlpath = "/" + self._version + "/logout"
+        urlpath = "/logout"
         method = "PUT"
         self._http_connect_request(method, urlpath, headers=headers)
 
@@ -417,14 +311,10 @@ class ApiConnection(object):
         else:
             body = json.dumps(data)
 
-        resp_data, resp_status, resp_reason, _resp_headers = \
+        parsed_data, resp_status, resp_reason, _resp_headers = \
             self._http_connect_request(method, urlpath, params=params,
                                        body=body, headers=headers)
 
-        if resp_data is None or resp_data == "":
-            return {}, None
-        parsed_data = json.loads(_make_unicode_string(resp_data),
-                                 object_pairs_hook=collections.OrderedDict)
         ret_metadata = {}
         ret_data = parsed_data
         if self._version == 'v2':
@@ -447,8 +337,7 @@ class ApiConnection(object):
           path (str) - Endpoint path, e.g. "/app_templates"
           data (dict) - e.g. {"name": "myapptemplate"}
         """
-        urlpath = "/" + self._version + path
-        _metadata, data = self._do_request("POST", urlpath, data=data)
+        _metadata, data = self._do_request("POST", path, data=data)
         return data
 
     def read_endpoint(self, path, params=None):
@@ -459,8 +348,7 @@ class ApiConnection(object):
           path (str) - Endpoint path, e.g. "/app_templates"
           params (dict) - Querry Params, e.g. "/app_templates?key=value"
         """
-        urlpath = "/" + self._version + path
-        _metadata, data = self._do_request("GET", urlpath, params=params)
+        _metadata, data = self._do_request("GET", path, params=params)
         return data
 
     def read_entity(self, path, params=None):
@@ -471,8 +359,7 @@ class ApiConnection(object):
           path (str) - Entity path, e.g. "/app_templates/myapptemplate"
           params (dict) - Querry Params, e.g. "/app_templates?key=value"
         """
-        urlpath = "/" + self._version + path
-        _metadata, data = self._do_request("GET", urlpath, params=params)
+        _metadata, data = self._do_request("GET", path, params=params)
         return data
 
     def update_endpoint(self, path, data):
@@ -483,8 +370,7 @@ class ApiConnection(object):
           path (str) - Endpoint path
           data (dict)
         """
-        urlpath = "/" + self._version + path
-        _metadata, data = self._do_request("PUT", urlpath, data=data)
+        _metadata, data = self._do_request("PUT", path, data=data)
         return data
 
     def update_entity(self, path, data):
@@ -495,9 +381,12 @@ class ApiConnection(object):
           path (str) - Entity path, e.g. "/app_templates/myapptemplate"
           data (dict)
         """
-        urlpath = "/" + self._version + path
-        _metadata, data = self._do_request("PUT", urlpath, data=data)
+        _metadata, data = self._do_request("PUT", path, data=data)
         return data
+
+    def upload_endpoint(self, path, files, data):
+        _metadata, data = self._do_request("PUT", path, data=data,
+                                           files=files)
 
     def delete_entity(self, path, data=None):
         """
@@ -506,6 +395,5 @@ class ApiConnection(object):
         Parameters:
           path (str) - Entity path, e.g. "/app_templates/myapptemplate"
         """
-        urlpath = "/" + self._version + path
-        _metadata, data = self._do_request("DELETE", urlpath, data=data)
+        _metadata, data = self._do_request("DELETE", path, data=data)
         return data

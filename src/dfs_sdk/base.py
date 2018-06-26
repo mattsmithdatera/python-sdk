@@ -234,7 +234,8 @@ class Endpoint(object):
                 self.context.connection.login(
                        name=self._kwargs['username'],
                        password=self._kwargs['password'])
-            if attr not in self.context.reader._ep_name_set:
+            if (attr not in self.context.reader._ep_name_set
+                    and self.context.strict):
                 raise SdkEndpointNotFound(
                     "No {} Endpoint found for {}".format(
                         self.context.connection._version, attr))
@@ -344,6 +345,10 @@ class GenericEndpoint(Endpoint):
         entity = self._new_contained_entity(data)
 
         return entity
+
+    def upload(self, **params):
+        data = self.context.connection.upload_endpoint(self._path, params)
+        return data
 
     def set(self, **params):
         """Sets the endpoint with list passed"""

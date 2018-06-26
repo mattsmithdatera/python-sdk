@@ -23,6 +23,7 @@ class ApiContext(object):
         self.version = None
 
         self._reader = None
+        self.strict = True
 
     @property
     def reader(self):

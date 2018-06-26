@@ -62,6 +62,7 @@ def _api_getter(base):
             tenant = kwargs.get('tenant', None)
             timeout = kwargs.get('timeout', DEFAULT_HTTP_TIMEOUT)
             secure = kwargs.get('secure', True)
+            strict = kwargs.get('strict', True)
             if not self._context:
                 self._context = ApiContext()
                 self.__create_context(
@@ -72,7 +73,8 @@ def _api_getter(base):
                         tenant=tenant,
                         timeout=timeout,
                         secure=secure,
-                        version=self._version)
+                        version=self._version,
+                        strict=strict)
             return self._context
 
         @context.setter
@@ -83,7 +85,8 @@ def _api_getter(base):
         # initialization too much, thus the name-mangle
         def __create_context(self, context, hostname, username=None,
                              password=None, tenant=None, timeout=None,
-                             secure=True, version=DEFAULT_API_VERSION):
+                             secure=True, version=DEFAULT_API_VERSION,
+                             strict=True):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -101,6 +104,7 @@ def _api_getter(base):
 
             context.timeout = timeout
             context.secure = secure
+            context.strict = strict
 
             context.connection = self._create_connection(context)
 
