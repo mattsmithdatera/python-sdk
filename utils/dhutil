@@ -5,7 +5,7 @@ from __future__ import print_function, division, unicode_literals
 
 dhutil:    Datera Host Utility
 
-Usage:
+sys.exit(FAILURE):
     dhutil
         --basename <string>
         --template <string>
@@ -48,9 +48,8 @@ import os
 import subprocess
 import platform
 import time
-import argparse
 import multiprocessing as mp
-from dfs_sdk import get_api
+from dfs_sdk import scaffold
 
 SLEEP = 10
 DISK_BY_PATH = "/dev/disk/by-path"
@@ -59,51 +58,6 @@ VER = "1.2.0"
 
 SUCCESS = 0
 FAILURE = 1
-
-
-def usage():
-    print("""
-Usage:
-    dhutil
-        --basename <string>
-        --template <string>
-        --size <string> (GB)
-        --count <int>
-        --numreplicas <int>
-        --cleanall
-        --showall
-        --mkfs
-        --mpmap
-        --dirprefix <string>
-        --chown <string>
-        --fstype <string>
-        --createfio
-        --snappol  <RETCOUNT> <SNAPINTERVAL>
-        --volperf  <TOTAL_IOPS_MAX> <TOTAL_BANDWIDTH_MAX>
-        --tenant <TENANT_NAME>
-
-    'basename' corresponds to the app_instance
-    'size' is interpreted as number of GB.
-    'count' is the number of app_instances to create
-    'numreplicas' is the number of replicas to create
-    'template' must refer to an existing template
-    'cleanall' applies only to a given 'basename'
-    'showall' takes no other args/options
-    'mkfs' will create ext4 file systems on the volumes created
-    'mpmap' will show the hostside multipath volume mapping
-    'dirprefix' specifies a mount point prefix for the volume mount
-    'chown' specifies chown:chgrp for the mount point
-    'fstype currently xfs (default) or ext4
-    'createfio' creates sample fio files for each volume
-    'snappol' specifies snapshot retention count
-              and interval(15min, 1hour, 1day, 1month, 1year)
-    'volperf' volume-level total max iops and bandwidth(KBps)
-    'tenant' uses the specified tenant name for create application instances
-
-
-""")
-
-    sys.exit(FAILURE)
 
 
 def version(args):
@@ -144,9 +98,15 @@ def initiator_create(api, name, init):
     return api.initiators.create(name=name, id=init)
 
 
-def run_cmd(cmd):
+def run_cmd(cmd, fail_ok=False):
     print("Running: ", cmd)
-    return subprocess.check_output(cmd, shell=True)
+    result = None
+    try:
+        result = subprocess.check_output(cmd, shell=True)
+    except subprocess.CalledProcessError:
+        if not fail_ok:
+            raise
+    return result
 
 
 def target_logout_and_node_cleanup(api, node, basename):
@@ -455,23 +415,26 @@ def nocreds():
     sys.exit(FAILURE)
 
 
-def chk_args(args):
+def chk_args(args, parser):
 
     # the only options allowed without basename
     if not args.basename and not args.showall and not args.mpmap:
         print("ERROR: most options require basename")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
     # need at least one of these
     if not args.basename and not args.showall and not args.mpmap:
         print("ERROR:  Need atleast 'basename', 'showall' or 'mpmap'")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
     # options required if basename
     if args.basename and not (args.template or args.count or
                               args.cleanall or args.mpmap or args.mkfs):
         print("ERROR: Missing required arguments for 'basename'")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
     # options not allowed with cleanall
     if args.cleanall and (args.size or args.count or args.showall or
@@ -479,44 +442,53 @@ def chk_args(args):
                           args.chown or args.template or
                           args.fstype or args.numreplicas):
         print("ERROR: 'cleanall' include extraneous options")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
     # option combinations required
     if args.count and not (args.size or args.template):
         print("ERROR: 'count' requires 'size' or 'template'")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
     if args.template and not args.count:
         print("ERROR: 'template' requires 'count'")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
     if args.fstype and not args.mkfs:
         print("ERROR: 'fstype' requires 'mkfs'")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
     # options not allowed together
     if (args.size or args.numreplicas) and args.template:
         print("ERROR: 'size' and 'numreplicas' not allowed with 'template'")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
     # options with specific required values
     if args.fstype and args.fstype not in ['ext4', 'xfs']:
         print("ERROR: Only 'xfs' and 'ext4' are allowed for fstype")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
     if args.snappol:
         if args.snappol[0].isdigit() is False:
             print("ERROR: RETCOUNT must be an integer")
-            usage()
+            parser.print_help()
+            sys.exit(FAILURE)
         if args.snappol[1] not in (
                 '15min', '1hour', '1day', '1week', '1month', '1year'):
             print("ERROR: INTERVAL must be '15min' or '1hour' or '1day' or "
                   "'1week' or '1month' or '1year'")
-            usage()
+            parser.print_help()
+            sys.exit(FAILURE)
 
     if args.tenant == "root":
         print("ERROR: root is not an allowed value for the tenant argument")
-        usage()
+        parser.print_help()
+        sys.exit(FAILURE)
 
 
 def iscsiadm_chk():
@@ -592,7 +564,7 @@ def main(args):
         version(args)
 
     if (len(sys.argv) < 2):
-        usage()
+        sys.exit(FAILURE)()
 
     if not args.disable_checks:
         dbck()
@@ -600,25 +572,13 @@ def main(args):
         mpath_chk()
         lsscsi_chk()
 
-    creds = os.getenv("DTSCREDS")
-    if not creds or creds == "":
-        nocreds()
-    user, password, ipaddr = creds.split(":")
-
     basename = args.basename
 
     if basename and len(basename) < 3:
         print("Validation Error:  %s : must be at least 3 chars" % basename)
         sys.exit(FAILURE)
 
-    # Make sure args make sense
-    chk_args(args)
-
-    print("Connecting to : ", ipaddr)
-    api = get_api(username=user, password=password,
-                  hostname=ipaddr,
-                  tenant="/root/" + args.tenant if args.tenant else "",
-                  version=args.api_version)
+    api = scaffold.get_api()
 
     host = os.uname()[1].split('.')[0]
     tenant = ''
@@ -725,7 +685,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='dhutil')
+    parser = scaffold.get_argparser()
     parser.add_argument('--basename', action="store", dest="basename")
     parser.add_argument('--template', action="store", dest="template")
     parser.add_argument('--createfio', action="store_true")
@@ -749,14 +709,12 @@ if __name__ == '__main__':
                                  'TOTAL_BANDWIDTH_MAX[KBps]'),
                         type=int,
                         help='volume-level iops and bandwidth policies')
-    parser.add_argument('--tenant', action="store",
-                        help='creates tenant with given name. If exists, uses '
-                             'that tenant')
     parser.add_argument('--version', action="store_true",
                         help='Specifies the current dhutil version and '
                              'supported API version')
-    parser.add_argument('--api-version', default='v2.2')
     parser.add_argument('--disable-checks', action="store_true",
                         help='Disable requirements checks before running')
     args = parser.parse_args()
+    # Make sure args make sense
+    chk_args(args, parser)
     sys.exit(main(args))
