@@ -238,7 +238,7 @@ def get_argparser():
                                            "backend")
     parser.add_argument("--username", help="Username for Datera account")
     parser.add_argument("--password", help="Password for Datera account")
-    parser.add_argument("--tenant", action="append", default=[],
+    parser.add_argument("--tenant",
                         help="Tenant Name/ID to search under,"
                              " use 'all' for all tenants")
     parser.add_argument("--config", help="Config file location")
