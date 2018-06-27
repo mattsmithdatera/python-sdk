@@ -1,48 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function, division, unicode_literals
-"""
 
-dhutil:    Datera Host Utility
-
-sys.exit(FAILURE):
-    dhutil
-        --basename <string>
-        --template <string>
-        --size <string> (GB)
-        --count <int>
-        --numreplicas <int>
-        --cleanall
-        --showall
-        --mkfs
-        --mpmap
-        --dirprefix <string>
-        --chown <string>
-        --fstype <string>
-        --createfio
-        --snappol  <RETCOUNT> <SNAPINTERVAL>
-        --volperf  <TOTAL_IOPS_MAX> <TOTAL_BANDWIDTH_MAX>
-        --tenant <TENANT_NAME>
-        --version
-
-    'basename' corresponds to the app_instance
-    'size' is interpreted as number of GB.
-    'count' is the number of app_instances to create
-    'numreplicas' is the number of replicas to create
-    'template' must refer to an existing template
-    'cleanall' applies only to a given 'basename'
-    'showall' takes no other args/options
-    'mkfs' will create ext4 file systems on the volumes created
-    'mpmap' will show the hostside multipath volume mapping
-    'dirprefix' specifies a mount point prefix for the volume mount
-    'chown' specifies chown:chgrp for the mount point
-    'fstype currently xfs (default) or ext4
-    'createfio' creates sample fio files for each volume
-    'snappol' specifies snapshot retention count and interval
-    'volperf' volume-level total max iops and bandwidth
-    'tenant' uses the specified tenant name for create application instances
-    'version' specifies the current dhutil version and supported API version
-"""
 import sys
 import os
 import subprocess
@@ -54,7 +13,7 @@ from dfs_sdk import scaffold
 SLEEP = 10
 DISK_BY_PATH = "/dev/disk/by-path"
 SYS_BLOCK = "/sys/block"
-VER = "1.2.0"
+VER = "1.3.0"
 
 SUCCESS = 0
 FAILURE = 1
@@ -562,11 +521,8 @@ def op_state_poller(instance):
 def main(args):
     global API
 
-    if args.version:
-        version(args)
-
     if (len(sys.argv) < 2):
-        sys.exit(FAILURE)()
+        sys.exit(FAILURE)
 
     if not args.disable_checks:
         dbck()
@@ -688,20 +644,36 @@ def main(args):
 
 if __name__ == '__main__':
     parser = scaffold.get_argparser()
-    parser.add_argument('--basename', action="store", dest="basename")
-    parser.add_argument('--template', action="store", dest="template")
-    parser.add_argument('--createfio', action="store_true")
-    parser.add_argument('--size', action="store", dest="size")
-    parser.add_argument('--count', action="store", dest='count', type=int)
-    parser.add_argument('--numreplicas', action="store", dest='numreplicas',
-                        type=int, default=3)
-    parser.add_argument('--cleanall', action="store_true")
-    parser.add_argument('--showall', action="store_true")
-    parser.add_argument('--mkfs', action="store_true")
-    parser.add_argument('--mpmap', action="store_true")
-    parser.add_argument('--dirprefix', action="store", dest='dirprefix')
-    parser.add_argument('--chown', action="store", dest='chown')
-    parser.add_argument('--fstype', action="store", dest='fstype')
+    parser.add_argument('--basename', action="store",
+                        help='The app_instance prefix')
+    parser.add_argument('--template', action="store",
+                        help='The template to use, must be existing')
+    parser.add_argument('--createfio', action="store_true",
+                        help='creates sample fio files for each volume')
+    parser.add_argument('--count', action="store", type=int, default=2,
+                        help='Number of app_instances to create')
+    parser.add_argument('--size', action="store", default=5,
+                        help='Size in GB of volumes during creation')
+    parser.add_argument('--numreplicas', action="store", type=int, default=3,
+                        help='Number of replicas for volumes during creation')
+    parser.add_argument('--cleanall', action="store_true",
+                        help='Clean all app_instances with --basename prefix')
+    parser.add_argument('--showall', action="store_true",
+                        help='Shows current cluster state')
+    parser.add_argument('--mkfs', action="store_true",
+                        help='will create a file system on the created '
+                             'volumes, filesystem can be specified with '
+                             '--fstype')
+    parser.add_argument('--mpmap', action="store_true",
+                        help='Show host-side multipath mapping')
+    parser.add_argument('--dirprefix', action="store",
+                        help='Directory under which to place mounts')
+    parser.add_argument('--chown', action="store",
+                        help='The chown:chgrp for mounts')
+    parser.add_argument('--fstype', action="store", choices=('xfs', 'ext4'),
+                        default='xfs',
+                        help='Filesystem to use when formatting mount, '
+                             'currently xfs (default) or ext4')
     parser.add_argument('--snappol', action="store", dest="snappol", nargs=2,
                         metavar=('RETCOUNT', 'INTERVAL'),
                         help='volume-level snapshot retention count and '
@@ -718,5 +690,8 @@ if __name__ == '__main__':
                         help='Disable requirements checks before running')
     args = parser.parse_args()
     # Make sure args make sense
+    if args.version:
+        version(args)
+        sys.exit(SUCCESS)
     chk_args(args, parser)
     sys.exit(main(args))
