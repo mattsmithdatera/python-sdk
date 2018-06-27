@@ -364,7 +364,7 @@ class GenericEndpoint(Endpoint):
             data = self.context.connection.read_endpoint(path, params)
             return self._get_list(path, data)
         except _ApiResponseError as ex:
-            if ex.message.startswith("No data at "):
+            if ex.resp_data['message'].startswith("No data at "):
                 return []
             raise
 
