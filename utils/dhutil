@@ -59,6 +59,8 @@ VER = "1.2.0"
 SUCCESS = 0
 FAILURE = 1
 
+API = None
+
 
 def version(args):
     print("dhutil version:", VER)
@@ -71,7 +73,7 @@ def version(args):
 #
 
 
-def vol_create(si, name, args, api):
+def si_vol_create(si, name, args):
     numreplicas = args.numreplicas
     tenant = ''
     if args.tenant:
@@ -88,14 +90,14 @@ def vol_create(si, name, args, api):
     return vol['uuid']
 
 
-def initiator_create(api, name, init):
-    iis = api.initiators.list()
+def initiator_create(name, init):
+    iis = API.initiators.list()
     for i in iis:
         if i['id'] == init:
             print("Initiator: (%s) %s,  already exists" % (i['name'], id))
             return i
     print("Creating Initiator: (%s) %s" % (name, init))
-    return api.initiators.create(name=name, id=init)
+    return API.initiators.create(name=name, id=init)
 
 
 def run_cmd(cmd, fail_ok=False):
@@ -109,8 +111,8 @@ def run_cmd(cmd, fail_ok=False):
     return result
 
 
-def target_logout_and_node_cleanup(api, node, basename):
-    for ai in api.app_instances.list():
+def target_logout_and_node_cleanup(node, basename):
+    for ai in API.app_instances.list():
         for si in ai.storage_instances.list():
             if ai['name'].startswith(basename):
                 if 'iqn' in si['access']:
@@ -148,14 +150,14 @@ def target_login(node, si, initiator, sleep=SLEEP):
         run_cmd(cmd.format(iqn, ip))
 
 
-def clean_all(api, target, args):
+def clean_all(target, args):
     # Check API Version
     if args.tenant:
         tenantname = "/root/" + args.tenant
     else:
         tenantname = ''
     # Deleting app instances
-    for app_instance in api.app_instances.list(tenant=tenantname):
+    for app_instance in API.app_instances.list(tenant=tenantname):
         if not app_instance["name"].startswith(target):
             continue
         print("Delete app instance " + app_instance['name'])
@@ -164,7 +166,7 @@ def clean_all(api, target, args):
         app_instance.delete(tenant=tenantname)
 
     # Deleting initators
-    for initiator in api.initiators.list():
+    for initiator in API.initiators.list():
         if not initiator["name"].startswith(target):
             continue
         print("Delete initiator " + initiator['name'])
@@ -172,50 +174,50 @@ def clean_all(api, target, args):
 
     # Deleting tenants
     if tenantname != '':
-        for tenant in api.tenants.list():
+        for tenant in API.tenants.list():
             if tenant['path'] == '/tenants/root':
                 continue
-            if not api.app_instances.list():
+            if not API.app_instances.list():
                 tenant.delete(tenant=tenantname)
                 print("Deleted tenant " + tenant['name'])
             else:
                 print("Tenant is not empty and hence was not deleted")
 
 
-def sn_to_hostname(api, sn):
+def sn_to_hostname(sn):
     uuid = ""
     try:
         uuid = sn['path'].split("/")[2]
     except KeyError:
         uuid = sn.split("/")[2]
-    sn = api.storage_nodes.get(uuid)
+    sn = API.storage_nodes.get(uuid)
     return sn['name']
 
 
-def si_to_hostname(api, si):
+def si_to_hostname(si):
     sn_name = 'undef'
     for sn in si['active_storage_nodes']:
         try:
             uuid = sn['path'].split("/")[2]
         except KeyError:
             uuid = sn.split("/")[2]
-        sn = api.storage_nodes.get(uuid)
+        sn = API.storage_nodes.get(uuid)
         sn_name = 'undef'
         sn_name = sn['name']
     # todo, this only returns the last active server in the list
     return sn_name
 
 
-def show_all(api):
-    for at in api.app_templates.list():
+def show_all():
+    for at in API.app_templates.list():
         print("App_Template: " + at['name'])
-    for tenant in api.tenants.list():
+    for tenant in API.tenants.list():
         print("Tenant: " + tenant['name'])
         if tenant["name"] != "root":
             tenant = "/root/" + tenant["name"]
         else:
             tenant = "/" + tenant["name"]
-        for ai in api.app_instances.list(tenant=tenant):
+        for ai in API.app_instances.list(tenant=tenant):
             print("  App_instance: " + ai['name'])
             print("    admin_state: ", ai['admin_state'])
             for si in ai.storage_instances.list(tenant=tenant):
@@ -229,7 +231,7 @@ def show_all(api):
                     print("        +ACCESS IP: " + ip)
                 for sn in si['active_storage_nodes']:
                     print("        +ACTIVE_STORAGE_NODES: ",
-                          sn_to_hostname(api, sn))
+                          sn_to_hostname(sn))
                 for v in si.volumes.list(tenant=tenant):
                     print("        =Volume: {},   Size : {},   UUID : {}"
                           "".format(v['name'], v['size'], v['uuid']))
@@ -268,15 +270,15 @@ def dm_to_mapper(dm):
     return mapper
 
 
-def map_def(api, args, basename):
+def map_def(args, basename):
     uuid_map = {}
-    for t in api.tenants.list():
+    for t in API.tenants.list():
         t = t.reload()
         if t["name"] != "root":
             tenant = "/root/" + t["name"]
         else:
             tenant = "/" + t["name"]
-        for ai in api.app_instances.list(tenant=tenant):
+        for ai in API.app_instances.list(tenant=tenant):
             for si in ai['storage_instances']:
                 for v in si['volumes']:
                     uuid = v['uuid']
@@ -286,18 +288,17 @@ def map_def(api, args, basename):
                                           'sname': si['name'],
                                           'vname': v['name'],
                                           'id': uuid,
-                                          'nodename': si_to_hostname(
-                                              api, si)}
+                                          'nodename': si_to_hostname(si)}
                         if 'iqn' in si['access']:
                             uuid_map[uuid]['iqn'] = si['access']['iqn']
     return uuid_map
 
 
-def mpmap(api, args, tenant):
+def mpmap(args, tenant):
     mntmap = []
     basename = args.basename
 
-    uuid_map = map_def(api, args, basename)
+    uuid_map = map_def(args, basename)
 
     for m in uuid_map:
         if args.volperf:
@@ -347,7 +348,7 @@ def create_fio_template():
             f.write(line + '\n')
 
 
-def create_fio_files(api, args, tenant):
+def create_fio_files(args, tenant):
 
     fio = {args.basename + '_randread.fio': {
         'rw': 'randread', 'blocksize': '4k'},
@@ -360,7 +361,7 @@ def create_fio_files(api, args, tenant):
     }
 
     create_fio_template()
-    mntmap = mpmap(api, args, tenant)
+    mntmap = mpmap(args, tenant)
 
     for key, item in list(fio.items()):
         with open('fiotemplate.fio', 'r') as f:
@@ -384,8 +385,8 @@ def create_fio_files(api, args, tenant):
                             key.write("size=500M" + '\n')
 
 
-def chktempl(api, templ):
-    templs = [at['name'] for at in api.app_templates.list()]
+def chktempl(templ):
+    templs = [at['name'] for at in API.app_templates.list()]
     if templ in templs:
         return True
     return False
@@ -559,6 +560,7 @@ def op_state_poller(instance):
 
 
 def main(args):
+    global API
 
     if args.version:
         version(args)
@@ -578,31 +580,31 @@ def main(args):
         print("Validation Error:  %s : must be at least 3 chars" % basename)
         sys.exit(FAILURE)
 
-    api = scaffold.get_api()
+    API = scaffold.get_api()
 
     host = os.uname()[1].split('.')[0]
     tenant = ''
 
     if args.cleanall:
         unmount(basename)
-        target_logout_and_node_cleanup(api, host, basename)
-        clean_all(api, basename, args)
+        target_logout_and_node_cleanup(host, basename)
+        clean_all(basename, args)
         sys.exit(SUCCESS)
 
     if args.showall:
-        show_all(api)
+        show_all()
         if args.mpmap:
-            mpmap(api, args, tenant)
+            mpmap(args, tenant)
         sys.exit(SUCCESS)
 
     if args.mpmap and not args.count:
-        mpmap(api, args, tenant)
+        mpmap(args, tenant)
         sys.exit(SUCCESS)
 
     cmd = "grep '^InitiatorName' /etc/iscsi/initiatorname.iscsi"
     cmd = cmd + " | sed -e 's/InitiatorName=//'"
     iscsi_initiator = run_cmd(cmd).strip()
-    ii = initiator_create(api, host, iscsi_initiator)
+    ii = initiator_create(host, iscsi_initiator)
 
     #
     # Semantics:  If a template exists, create args.count instances
@@ -613,28 +615,28 @@ def main(args):
 
     # Make sure template exists
     if args.template:
-        if chktempl(api, args.template):
+        if chktempl(args.template):
             if args.tenant:
-                for subtenant in api.tenants.list()[0]['subtenants']:
+                for subtenant in API.tenants.list()[0]['subtenants']:
                     if subtenant.endswith(args.tenant):
                         print("Using prexisting subtenant " + args.tenant)
                         tenant = "/root/" + args.tenant
                 if tenant == '':
-                    api.tenants.create(name=args.tenant)
+                    API.tenants.create(name=args.tenant)
                     print("Created subtenant: ", args.tenant)
                     tenant = "/root/" + args.tenant
             # Create N app_instances from the template
             for n in range(1, args.count + 1):
                 appname = "%s-%d" % (args.basename, n)
                 tname = "/app_templates/" + args.template
-                ai = api.app_instances.create(
+                ai = API.app_instances.create(
                     name=appname, app_template=tname, tenant=tenant)
                 print("Created app_instance: ", ai['name'])
                 for si in ai.storage_instances.list(tenant=tenant):
                     si.acl_policy.initiators.add(ii, tenant=tenant)
             # Login to the storage
             # get app instance status
-            for ai in api.app_instances.list(tenant=tenant):
+            for ai in API.app_instances.list(tenant=tenant):
                 if args.basename in ai['name']:
                     for si in ai.storage_instances.list(tenant=tenant):
                         op_state_poller(si)
@@ -649,23 +651,23 @@ def main(args):
         # Create N app_instances, storage_instance, and add initiator
         #
         if args.tenant:
-            for subtenant in api.tenants.list()[0]['subtenants']:
+            for subtenant in API.tenants.list()[0]['subtenants']:
                 if subtenant.endswith(args.tenant):
                     print("Using prexisting subtenant " + args.tenant)
                     tenant = "/root/" + args.tenant
             if tenant == '':
-                api.tenants.create(name=args.tenant)
+                API.tenants.create(name=args.tenant)
                 print("Created subtenant: ", args.tenant)
                 tenant = "/root/" + args.tenant
         for i in range(1, args.count + 1):
             bname = "{}_{}".format(basename, i)
-            ai = api.app_instances.create(name=bname, tenant=tenant)
+            ai = API.app_instances.create(name=bname, tenant=tenant)
             si = ai.storage_instances.create(name=bname, tenant=tenant)
             si.acl_policy.initiators.add(ii, tenant=tenant)
             volname = "{}_vol".format(bname)
-            uuid = vol_create(si, volname, args, api)
+            uuid = si_vol_create(si, volname, args)
             print("Created Volume: %s (%s)" % (volname, uuid))
-        for ai in api.app_instances.list(tenant=tenant):
+        for ai in API.app_instances.list(tenant=tenant):
             if basename in ai['name']:
                 # Wait until storage instance is online
                 for si in ai.storage_instances.list(tenant=tenant):
@@ -675,10 +677,10 @@ def main(args):
         run_cmd("lsscsi -t")
 
     if args.createfio:
-        create_fio_files(api, args, tenant)
+        create_fio_files(args, tenant)
 
     if args.mkfs:
-        mntmap = mpmap(api, args, tenant)
+        mntmap = mpmap(args, tenant)
         pool = mp.Pool()
         list(pool.imap_unordered(mkfs, mntmap))
     return 0
