@@ -32,10 +32,8 @@ def version(args):
 # Takes storage_instance as input parameter
 #
 def si_vol_create(si, name, args):
+    tenant = scaffold.get_config()['tenant']
     numreplicas = args.numreplicas
-    tenant = ''
-    if args.tenant:
-        tenant = "/root/" + args.tenant
     vol = si.volumes.create(name=name, size=int(
         args.size), replica_count=int(numreplicas), tenant=tenant)
     if args.snappol:
@@ -49,6 +47,7 @@ def si_vol_create(si, name, args):
 
 
 def initiator_create(name, init):
+    print(API.context.tenant)
     iis = API.initiators.list()
     for i in iis:
         if i['id'] == init:
@@ -70,7 +69,7 @@ def run_cmd(cmd, fail_ok=False):
     return result
 
 
-def target_logout_and_node_cleanup(node, basename):
+def target_logout_and_node_cleanup(args, node, basename):
     for ai in API.app_instances.list():
         for si in ai.storage_instances.list():
             if ai['name'].startswith(basename):
@@ -94,37 +93,39 @@ def target_logout_and_node_cleanup(node, basename):
         run_cmd("sudo service multipathd reload")
 
 
-def target_login(node, si, initiator, sleep=SLEEP):
+def _login(ip, iqn):
+    print("IP ADDRS = ", ip)
+    cmd = "sudo iscsiadm -m node -T {} --portal {} --op=new".format(
+        iqn, ip)
+    cmd = cmd + " > /dev/null 2>&1"
+    run_cmd(cmd)
+    cmd = "sudo iscsiadm -m node -T {} --portal {} -l"
+    run_cmd(cmd.format(iqn, ip))
+
+
+def target_login(args, node, si, initiator, sleep=SLEEP):
     # Wait a bit ...
     if sleep != 0:
         print("Wait %s for storage to come online " % sleep)
         time.sleep(sleep)
     iqn = si['access']['iqn']
     print("IQN: " + iqn)
-    for ip in si['access']['ips']:
-        print("IP ADDRS = ", ip)
-        cmd = "sudo iscsiadm -m node -T {} --portal {} --op=new".format(
-            iqn, ip)
-        cmd = cmd + " > /dev/null 2>&1"
-        run_cmd(cmd)
-        cmd = "sudo iscsiadm -m node -T {} --portal {} -l"
-        run_cmd(cmd.format(iqn, ip))
+    if not args.single_link:
+        for ip in si['access']['ips']:
+            _login(ip, iqn)
+    else:
+        ip = si['access']['ips'][0]
+        _login(ip, iqn)
 
 
 def clean_all(args):
-    # Check API Version
-    if args.tenant:
-        tenantname = "/root/" + args.tenant
-    else:
-        tenantname = ''
     # Deleting app instances
-    for app_instance in API.app_instances.list(tenant=tenantname):
+    for app_instance in API.app_instances.list():
         if not app_instance["name"].startswith(args.basename):
             continue
         print("Delete app instance " + app_instance['name'])
-        app_instance.set(admin_state="offline",
-                         force=True, tenant=tenantname)
-        app_instance.delete(tenant=tenantname)
+        app_instance.set(admin_state="offline", force=True)
+        app_instance.delete()
 
     # Deleting initators
     for initiator in API.initiators.list():
@@ -132,17 +133,6 @@ def clean_all(args):
             continue
         print("Delete initiator " + initiator['name'])
         initiator.delete()
-
-    # Deleting tenants
-    if tenantname != '':
-        for tenant in API.tenants.list():
-            if tenant['path'] == '/tenants/root':
-                continue
-            if not API.app_instances.list():
-                tenant.delete(tenant=tenantname)
-                print("Deleted tenant " + tenant['name'])
-            else:
-                print("Tenant is not empty and hence was not deleted")
 
 
 def sn_to_hostname(sn):
@@ -203,7 +193,7 @@ def mkfs(args):
         cmd = ("sudo mkfs.ext4 -E lazy_itable_init=1 {} ; mkdir -p /{}; "
                "mount {} /{}".format(args[0], args[1], args[0], args[1]))
     else:
-        cmd = "sudo mkfs.xfs {} ; mkdir -p /{}; mount {} /{}".format(
+        cmd = "sudo mkfs.xfs {} ; sudo mkdir -p /{}; sudo mount {} /{}".format(
             args[0], args[1], args[0], args[1])
     run_cmd(cmd)
     if args[2].chown:
@@ -255,18 +245,20 @@ def map_def(args, basename):
     return uuid_map
 
 
-def mpmap(args, tenant):
+def mpmap(args):
     mntmap = []
     basename = args.basename
 
     uuid_map = map_def(args, basename)
 
+    print("UUID_MAP:", uuid_map)
     for m in uuid_map:
         if args.volperf:
             print("Sleeping 3s for target to be discovered")
             time.sleep(3)
         sd = iqn_to_sd(args, uuid_map[m]['iqn'])
-        if sd:
+        print("DEVICE:", sd)
+        if sd and not args.single_link:
             dm = sd_to_dm(sd)
             if not dm:
                 print("No DM for sd: {}. Please make sure that multipath "
@@ -293,7 +285,13 @@ def mpmap(args, tenant):
                 if args.dirprefix:
                     mntpoint = args.dirprefix + "/" + mntpoint
                 mntmap.append([dmpath, mntpoint, args])
-
+        elif sd and args.single_link:
+            if args.mkfs:
+                mntpoint = uuid_map[m]['aname'] + "-" + uuid_map[m]['vname']
+                if args.dirprefix:
+                    mntpoint = args.dirprefix + "/" + mntpoint
+                mntmap.append(["/dev/{}".format(sd), mntpoint, args])
+    print("MOUNTMAP:", mntmap)
     if args.mkfs:
         return mntmap
     else:
@@ -309,7 +307,7 @@ def create_fio_template():
             f.write(line + '\n')
 
 
-def create_fio_files(args, tenant):
+def create_fio_files(args):
 
     fio = {args.basename + '_randread.fio': {
         'rw': 'randread', 'blocksize': '4k'},
@@ -322,7 +320,7 @@ def create_fio_files(args, tenant):
     }
 
     create_fio_template()
-    mntmap = mpmap(args, tenant)
+    mntmap = mpmap(args)
 
     for key, item in list(fio.items()):
         with open('fiotemplate.fio', 'r') as f:
@@ -426,12 +424,6 @@ def chk_args(args, parser):
         parser.print_help()
         sys.exit(FAILURE)
 
-    # options not allowed together
-    if (args.size or args.numreplicas) and args.template:
-        print("ERROR: 'size' and 'numreplicas' not allowed with 'template'")
-        parser.print_help()
-        sys.exit(FAILURE)
-
     # options with specific required values
     if args.snappol:
         if args.snappol[0].isdigit() is False:
@@ -444,11 +436,6 @@ def chk_args(args, parser):
                   "'1week' or '1month' or '1year'")
             parser.print_help()
             sys.exit(FAILURE)
-
-    if args.tenant == "root":
-        print("ERROR: root is not an allowed value for the tenant argument")
-        parser.print_help()
-        sys.exit(FAILURE)
 
 
 def iscsiadm_chk():
@@ -518,60 +505,43 @@ def op_state_poller(instance):
     sys.exit(FAILURE)
 
 
-def run_mkfs(args, tenant):
-    mntmap = mpmap(args, tenant)
+def run_mkfs(args):
+    mntmap = mpmap(args)
     pool = mp.Pool()
     list(pool.imap_unordered(mkfs, mntmap))
 
 
-def create_with_template(args, tenant, host, iscsi_initiator, initiator):
-    if chktempl(args.template):
-        if args.tenant:
-            for subtenant in API.tenants.list()[0]['subtenants']:
-                if subtenant.endswith(args.tenant):
-                    print("Using prexisting subtenant " + args.tenant)
-                    tenant = "/root/" + args.tenant
-            if tenant == '':
-                API.tenants.create(name=args.tenant)
-                print("Created subtenant: ", args.tenant)
-                tenant = "/root/" + args.tenant
-        # Create N app_instances from the template
-        for n in range(1, args.count + 1):
-            appname = "%s-%d" % (args.basename, n)
-            tname = "/app_templates/" + args.template
-            ai = API.app_instances.create(
-                name=appname, app_template=tname, tenant=tenant)
-            print("Created app_instance: ", ai['name'])
-            for si in ai.storage_instances.list(tenant=tenant):
-                si.acl_policy.initiators.add(initiator, tenant=tenant)
-        # Login to the storage
-        # get app instance status
-        for ai in API.app_instances.list(tenant=tenant):
-            if args.basename in ai['name']:
-                for si in ai.storage_instances.list(tenant=tenant):
-                    op_state_poller(si)
-                    print(si['name'] + " is online")
-                    target_login(host, si, iscsi_initiator, sleep=0)
-        run_cmd("lsscsi -t")
-    else:
+def create_with_template(args, host, iscsi_initiator, initiator):
+    if not chktempl(args.template):
         print(args.template, " : does not exist!")
         sys.exit(FAILURE)
+    tenant = scaffold.get_config()['tenant']
+    # Create N app_instances from the template
+    for n in range(1, args.count + 1):
+        appname = "%s-%d" % (args.basename, n)
+        tname = {"path": "/app_templates/" + args.template}
+        ai = API.app_instances.create(
+            name=appname, app_template=tname, tenant=tenant)
+        print("Created app_instance: ", ai['name'])
+        for si in ai.storage_instances.list(tenant=tenant):
+            si.acl_policy.initiators.add(initiator, tenant=tenant)
+    # Login to the storage
+    # get app instance status
+    for ai in API.app_instances.list(tenant=tenant):
+        if args.basename in ai['name']:
+            for si in ai.storage_instances.list(tenant=tenant):
+                op_state_poller(si)
+                print(si['name'] + " is online")
+                target_login(args, host, si, iscsi_initiator, sleep=0)
+    run_cmd("lsscsi -t")
     return tenant
 
 
-def create_no_template(args, tenant, host, iscsi_initiator, initiator):
+def create_no_template(args, host, iscsi_initiator, initiator):
     #
     # Create N app_instances, storage_instance, and add initiator
     #
-    if args.tenant:
-        for subtenant in API.tenants.list()[0]['subtenants']:
-            if subtenant.endswith(args.tenant):
-                print("Using prexisting subtenant " + args.tenant)
-                tenant = "/root/" + args.tenant
-        if tenant == '':
-            API.tenants.create(name=args.tenant)
-            print("Created subtenant: ", args.tenant)
-            tenant = "/root/" + args.tenant
+    tenant = scaffold.get_config()['tenant']
     for i in range(1, args.count + 1):
         bname = "{}_{}".format(args.basename, i)
         ai = API.app_instances.create(name=bname, tenant=tenant)
@@ -586,7 +556,7 @@ def create_no_template(args, tenant, host, iscsi_initiator, initiator):
             for si in ai.storage_instances.list(tenant=tenant):
                 op_state_poller(si)
                 print(si['name'] + " is online")
-                target_login(host, si, iscsi_initiator, sleep=0)
+                target_login(args, host, si, iscsi_initiator, sleep=0)
     run_cmd("lsscsi -t")
 
 
@@ -602,24 +572,23 @@ def main(args):
         mpath_chk()
         lsscsi_chk()
 
-    tenant = ''
     host = os.uname()[1].split('.')[0]
     API = scaffold.get_api()
 
     if args.showall:
         show_all()
         if args.mpmap:
-            mpmap(args, tenant)
+            mpmap(args)
         sys.exit(SUCCESS)
 
     if args.cleanall:
         unmount(args.basename)
-        target_logout_and_node_cleanup(host, args.basename)
+        target_logout_and_node_cleanup(args, host, args.basename)
         clean_all(args)
         sys.exit(SUCCESS)
 
     if args.mpmap and not args.count:
-        mpmap(args, tenant)
+        mpmap(args)
         sys.exit(SUCCESS)
 
     cmd = "sudo grep '^InitiatorName' /etc/iscsi/initiatorname.iscsi"
@@ -636,15 +605,15 @@ def main(args):
 
     # Make sure template exists
     if args.template:
-        tenant = create_with_template(args, tenant, host, iscsi_initiator, ii)
+        create_with_template(args, host, iscsi_initiator, ii)
     elif args.count:
-        tenant = create_no_template(args, tenant, host, iscsi_initiator, ii)
+        create_no_template(args, host, iscsi_initiator, ii)
 
     if args.createfio:
-        create_fio_files(args, tenant)
+        create_fio_files(args)
 
     if args.mkfs:
-        run_mkfs(tenant)
+        run_mkfs(args)
     return 0
 
 
@@ -694,6 +663,8 @@ if __name__ == '__main__':
                              'supported API version')
     parser.add_argument('--disable-checks', action="store_true",
                         help='Disable requirements checks before running')
+    parser.add_argument('--single-link', action="store_true",
+                        help="Only log into the first iscsi portal")
     args = parser.parse_args()
     # Make sure args make sense
     if args.version:
