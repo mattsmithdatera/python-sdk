@@ -2,12 +2,15 @@
 
 from __future__ import print_function, division, unicode_literals
 
-import sys
+import io
+import multiprocessing.dummy as mp
+import platform
 import os
 import subprocess
-import platform
+import sys
+import tarfile
 import time
-import multiprocessing.dummy as mp
+
 from dfs_sdk import scaffold
 
 SLEEP = 10
@@ -376,6 +379,17 @@ def nocreds():
 
 
 def chk_args(args, parser):
+    if args.push_logs and not args.logs_ecosystem:
+        print("ERROR: --push-logs requires --logs-ecosystem")
+        sys.exit(FAILURE)
+    else:
+        return
+
+    if args.logs_ecosystem and not args.logs_ecosystem:
+        print("ERROR: --logs-ecosystem requires --push-logs")
+        sys.exit(FAILURE)
+    else:
+        return
 
     if args.basename and len(args.basename) < 3:
         print("Validation Error:  %s : must be at least 3 chars" %
@@ -560,20 +574,39 @@ def create_no_template(args, host, iscsi_initiator, initiator):
     run_cmd("lsscsi -t")
 
 
+def push_logs(args):
+    # TODO (_alastor_): remove separate strict=False get_api call when
+    # logs_upload is added to API schema
+    api = scaffold.get_api(strict=False)
+    archive_name = 'archive-{}.tar.gz'.format(time.time())
+    with tarfile.open(archive_name, mode='w:gz') as archive:
+        for logfile in args.push_logs:
+            archive.add(logfile)
+    fname = os.path.abspath(archive_name)
+    files = {'file': (archive_name, io.open(fname, 'rb'))}
+    print("Uploading File:", fname)
+    api.logs_upload.upload(files=files, ecosystem=args.logs_ecosystem)
+    print("Finished Upload of file:", fname)
+
+
 def main(args):
     global API
 
     if (len(sys.argv) < 2):
         sys.exit(FAILURE)
 
+    host = os.uname()[1].split('.')[0]
+    API = scaffold.get_api()
+
+    if args.push_logs:
+        push_logs(args)
+        sys.exit(SUCCESS)
+
     if not args.disable_checks:
         dbck()
         iscsiadm_chk()
         mpath_chk()
         lsscsi_chk()
-
-    host = os.uname()[1].split('.')[0]
-    API = scaffold.get_api()
 
     if args.showall:
         show_all()
@@ -665,6 +698,12 @@ if __name__ == '__main__':
                         help='Disable requirements checks before running')
     parser.add_argument('--single-link', action="store_true",
                         help="Only log into the first iscsi portal")
+    parser.add_argument('--push-logs', nargs='+',
+                        help='Takes a path to the logfiles to push')
+    parser.add_argument('--logs-ecosystem', choices=('openstack', 'docker',
+                        'vcp'),
+                        help='The ecosystem logs are being collected for.  '
+                             'Must be provided with "--push-logs"')
     args = parser.parse_args()
     # Make sure args make sense
     if args.version:
