@@ -85,8 +85,13 @@ def _gen_config():
             print("Config file already exists in current directory.  Please "
                   "move or remove it before generating a new one")
             sys.exit(1)
-        with io.open(CONFIGS[-1], 'w+') as f:
-            json.dump(EXAMPLE_CONFIG, f, indent=4)
+        with io.open(CONFIGS[-1], 'w+', encoding='utf-8') as f:
+            # Python2 Compatibility
+            try:
+                f.write(unicode(json.dumps(
+                    EXAMPLE_CONFIG, ensure_ascii=False, indent=4)))
+            except NameError:
+                json.dump(EXAMPLE_CONFIG, f, indent=4)
     elif _ARGS.gen_config == "shell":
         if os.path.exists(DATERA_RC):
             print("RC file already exists in current directory. Please move "
