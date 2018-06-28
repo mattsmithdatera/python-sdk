@@ -233,7 +233,7 @@ def get_config():
     return copy.deepcopy(_CONFIG)
 
 
-def get_argparser():
+def get_argparser(add_help=True):
     global _ARGS, VERBOSE
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--api-version", default="v{}".format(LATEST),
@@ -262,5 +262,4 @@ def get_argparser():
     if args.gen_config:
         _gen_config()
         sys.exit(0)
-    new_parser = argparse.ArgumentParser(parents=[parser])
-    return new_parser
+    return argparse.ArgumentParser(add_help=add_help, parents=[parser])
