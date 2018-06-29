@@ -14,10 +14,86 @@ Details around the API itself are not necessarily covered through this SDK.
 
 To install:
 ```bash
+    apt-get install python-virtualenv (or yum install python-virtualenv for CentOS)
+    virtualenv sdk
+    source sdk/bin/activate
     git clone https://github.com/Datera/python-sdk.git
     cd python-sdk
+    pip install -r requirements.txt
     python setup.py install
 ```
+
+## Datera Universal Config
+
+The Datera Universal Config (DUC) is a config that can be specified in a
+number of ways:
+
+* JSON file with any of the following names:
+    [.datera-config, datera-config, .datera-config.json, dateraconfig.json]
+* The JSON file has the following configuration:
+```json
+     {"mgmt_ip": "1.1.1.1",
+      "username": "admin",
+      "password": "password",
+      "tenant": "/root",
+      "api_version": "2.2"}
+```
+* The file can be in any of the following places.  This is also the lookup
+  order for config files:
+    current directory --> home directory --> home/config directory --> /etc/datera
+* If no datera config file is found and a cinder.conf file is present, the
+  config parser will try and pull connection credentials from the
+  cinder.conf
+* Instead of a JSON file, environment variables can be used.
+    - DAT_MGMT
+    - DAT_USER
+    - DAT_PASS
+    - DAT_TENANT
+    - DAT_API
+* Most tools built to use the Datera Universal Config will also allow
+  for providing/overriding any of the config values via command line flags.
+    - --hostname
+    - --username
+    - --password
+    - --tenant
+    - --api-version
+
+## Developing with Datera Universal Config
+
+To use DUC in a new python tool is very simple just add the following to
+your python script:
+
+```python
+from dfs_sdk import scaffold
+
+parser = scaffold.get_argparser()
+parser.add_argument('my-new-arg')
+args = parser.parse_args()
+```
+
+If you want to use subparsers, or customize the help outptu of your parser
+then use the following
+
+```python
+import argparse
+from dfs_sdk import scaffold
+
+top_parser = scaffold.get_argparser(add_help=False)
+new_parser = argparse.ArgumentParser(parents=[top_parser])
+new_parser.add_argument('my-new-arg')
+args = new_parser.parse_args()
+```
+
+Inside a script the config can be recieved by calling
+```python
+from dfs_sdk import scaffold
+
+scaffold.get_argparser()
+config = scaffold.get_config()
+```
+NOTE: You MUST call ``scaffold.get_argparser()`` before calling
+``scaffold.get_config()``.  This may change in the future
+
 ## Logging
 
 To set custom logging.json file
