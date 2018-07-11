@@ -88,6 +88,8 @@ class ApiConnection(object):
         self._tenant = context.tenant
 
         self._version = context.version
+        self._cert = context.cert
+        self._cert_key = context.cert_key
 
         self._secure = context.secure
         self._timeout = context.timeout
@@ -102,9 +104,11 @@ class ApiConnection(object):
         if self._secure:
             protocol = 'https'
             port = REST_PORT_HTTPS
+            cert_data = (self._cert, self._cert_key)
         else:
             protocol = 'http'
             port = REST_PORT
+            cert_data = None
         api_version = self._version
         host = self._hostname
 
@@ -116,7 +120,7 @@ class ApiConnection(object):
                       method, str(params), str(headers), str(body), str(files))
             resp = getattr(requests, method.lower())(
                     connection_string, headers=headers, params=params,
-                    data=body, verify=False, files=files)
+                    data=body, verify=False, files=files, cert=cert_data)
         except requests.ConnectionError as e:
             raise ApiConnectionError(e, '')
         except requests.Timeout as e:

@@ -21,6 +21,8 @@ class ApiContext(object):
         self.timeout = None
         self.secure = None
         self.version = None
+        self.cert = None
+        self.cert_key = None
 
         self._reader = None
         self.strict = True

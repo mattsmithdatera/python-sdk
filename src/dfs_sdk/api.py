@@ -63,6 +63,8 @@ def _api_getter(base):
             timeout = kwargs.get('timeout', DEFAULT_HTTP_TIMEOUT)
             secure = kwargs.get('secure', True)
             strict = kwargs.get('strict', True)
+            cert = kwargs.get('cert', None)
+            cert_key = kwargs.get('cert_key', None)
             if not self._context:
                 self._context = ApiContext()
                 self.__create_context(
@@ -74,7 +76,9 @@ def _api_getter(base):
                         timeout=timeout,
                         secure=secure,
                         version=self._version,
-                        strict=strict)
+                        strict=strict,
+                        cert=cert,
+                        cert_key=cert_key)
             return self._context
 
         @context.setter
@@ -86,7 +90,7 @@ def _api_getter(base):
         def __create_context(self, context, hostname, username=None,
                              password=None, tenant=None, timeout=None,
                              secure=True, version=DEFAULT_API_VERSION,
-                             strict=True):
+                             strict=True, cert=None, cert_key=None):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -105,6 +109,8 @@ def _api_getter(base):
             context.timeout = timeout
             context.secure = secure
             context.strict = strict
+            context.cert = cert
+            context.cert_key = cert_key
 
             context.connection = self._create_connection(context)
 
