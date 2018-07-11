@@ -218,7 +218,7 @@ def sd_to_dm(sd):
 
 def dm_to_mapper(dm):
     fname = "{}/{}/dm/name".format(SYS_BLOCK, dm)
-    with open(fname, 'r') as f:
+    with io.open(fname, 'r') as f:
         mapper = f.read().strip()
     f.closed
     return mapper
@@ -302,7 +302,7 @@ def mpmap(args):
 
 
 def create_fio_template():
-    with open('fiotemplate.fio', 'w') as f:
+    with io.open('fiotemplate.fio', 'w') as f:
         lines = ["[global]", "randrepeat=0", "ioengine=libaio", "iodepth=16",
                  "direct=1", "numjobs=4", "runtime=3600", "group_reporting",
                  "time_based"]
@@ -326,8 +326,8 @@ def create_fio_files(args):
     mntmap = mpmap(args)
 
     for key, item in list(fio.items()):
-        with open('fiotemplate.fio', 'r') as f:
-            with open(key, 'w') as key:
+        with io.open('fiotemplate.fio', 'r') as f:
+            with io.open(key, 'w') as key:
                 for line in f:
                     key.write(line)
                 for param in item:
