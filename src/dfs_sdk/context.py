@@ -26,6 +26,7 @@ class ApiContext(object):
 
         self._reader = None
         self.strict = True
+        self.thread_local = None
 
     @property
     def reader(self):

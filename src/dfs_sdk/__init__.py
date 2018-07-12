@@ -23,7 +23,6 @@ from .dlogging import setup_logging
 
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-setup_logging()
 
 # TODO(mss): generate this from version list imported from constants
 VERSION_MAP = {"v2": _DateraApi,
@@ -44,6 +43,7 @@ def get_api(hostname, username, password, version, tenant=None, strict=True,
     Optional parameters:
       tenant (str) - Tenant, for v2.1+ API only
     """
+    setup_logging(kwargs.get('disable_log', False))
     if version not in API_VERSIONS:
         raise ValueError(
             "API version {} unsupported by SDK at this time. Supported "

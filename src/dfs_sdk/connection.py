@@ -6,7 +6,9 @@ import io
 import json
 import os
 import threading
+import time
 import urllib3
+import uuid
 
 import requests
 
@@ -100,7 +102,7 @@ class ApiConnection(object):
         self._logged_in = False
 
     def _http_connect_request(self, method, urlpath, headers=None, params=None,
-                              body=None, files=None):
+                              body=None, files=None, sensitive=False):
         if self._secure:
             protocol = 'https'
             port = REST_PORT_HTTPS
@@ -115,12 +117,42 @@ class ApiConnection(object):
         connection_string = '{}://{}:{}/v{}/{}'.format(
                 protocol, host, port, api_version.strip('v'),
                 urlpath.strip('/'))
+        request_id = uuid.uuid4()
+        if not sensitive:
+            LOG.debug("\nDatera Trace ID: %(tid)s\n"
+                      "Datera Request ID: %(rid)s\n"
+                      "Datera Request URL: %(url)s\n"
+                      "Datera Request Method: %(method)s\n"
+                      "Datera Request Payload: %(payload)s\n"
+                      "Datera Request Headers: %(header)s\n",
+                      {'tid': getattr(
+                          self._context.thread_local, 'trace_id', None),
+                       'rid': request_id,
+                       'url': connection_string,
+                       'method': method,
+                       'payload': body,
+                       'header': headers})
+        t1 = time.time()
         try:
-            LOG.debug("REST: %s, %s, %s, %s, %s, %s", connection_string,
-                      method, str(params), str(headers), str(body), str(files))
             resp = getattr(requests, method.lower())(
                     connection_string, headers=headers, params=params,
                     data=body, verify=False, files=files, cert=cert_data)
+            if not sensitive or '/api' in resp.url:
+                t2 = time.time()
+                timedelta = round(t2 - t1, 3)
+                LOG.debug("\nDatera Trace ID: %(tid)s\n"
+                          "Datera Response ID: %(rid)s\n"
+                          "Datera Response TimeDelta: %(delta)ss\n"
+                          "Datera Response URL: %(url)s\n"
+                          "Datera Response Payload: %(payload)s\n"
+                          "Datera Response Object: %(obj)s\n",
+                          {'tid': getattr(
+                              self._context.thread_local, 'trace_id', None),
+                           'rid': request_id,
+                           'delta': timedelta,
+                           'url': resp.url,
+                           'payload': resp.content,
+                           'obj': resp})
         except requests.ConnectionError as e:
             raise ApiConnectionError(e, '')
         except requests.Timeout as e:
@@ -183,7 +215,7 @@ class ApiConnection(object):
         method = "PUT"
         resp_dict, resp_status, resp_reason, resp_hdrs = \
             self._http_connect_request(method, urlpath, body=body,
-                                       headers=headers)
+                                       headers=headers, sensitive=True)
         if 'key' not in resp_dict or not resp_dict['key']:
             raise ApiAuthError("No auth key returned", resp_dict)
         key = str(resp_dict['key'])

@@ -1,6 +1,8 @@
 """
 Provides the DateraApi objects
 """
+import threading
+
 from .constants import DEFAULT_HTTP_TIMEOUT
 from .connection import ApiConnection
 from .context import ApiContext
@@ -65,6 +67,7 @@ def _api_getter(base):
             strict = kwargs.get('strict', True)
             cert = kwargs.get('cert', None)
             cert_key = kwargs.get('cert_key', None)
+            thread_local = kwargs.get('thread_local', threading.local())
             if not self._context:
                 self._context = ApiContext()
                 self.__create_context(
@@ -78,7 +81,8 @@ def _api_getter(base):
                         version=self._version,
                         strict=strict,
                         cert=cert,
-                        cert_key=cert_key)
+                        cert_key=cert_key,
+                        thread_local=thread_local)
             return self._context
 
         @context.setter
@@ -90,7 +94,8 @@ def _api_getter(base):
         def __create_context(self, context, hostname, username=None,
                              password=None, tenant=None, timeout=None,
                              secure=True, version=DEFAULT_API_VERSION,
-                             strict=True, cert=None, cert_key=None):
+                             strict=True, cert=None, cert_key=None,
+                             thread_local=threading.local()):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -113,6 +118,7 @@ def _api_getter(base):
             context.cert_key = cert_key
 
             context.connection = self._create_connection(context)
+            context.thread_local = thread_local
 
         def _create_connection(self, context):
             """

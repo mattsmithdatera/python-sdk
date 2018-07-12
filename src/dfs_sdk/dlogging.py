@@ -43,12 +43,12 @@ def get_log(name):
     return log
 
 
-def setup_logging():
+def setup_logging(disable=False):
     path = os.getenv('DSDK_LOG_CFG', DEBUG_LOG)
     # Allows for disabling all logging config by the library
     # This is meant to prevent messing with any top-level logging configs
     # Using the library
-    if path.lower() == DISABLE:
+    if disable or path.lower() == DISABLE:
         return
     if path in LOGS:
         path = LOGS[path]
