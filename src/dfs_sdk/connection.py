@@ -146,6 +146,11 @@ class ApiConnection(object):
                 payload = "*********"
             else:
                 payload = resp.content
+            # Python 2/3 compatibility
+            try:
+                payload = payload.decode('utf-8').replace('\n', '')
+            except AttributeError:
+                payload = str(payload).replace('\n', '')
             t2 = time.time()
             timedelta = round(t2 - t1, 3)
             LOG.debug("\nDatera Trace ID: %(tid)s\n"
@@ -159,7 +164,7 @@ class ApiConnection(object):
                        'rid': request_id,
                        'delta': timedelta,
                        'url': resp.url,
-                       'payload': payload.replace('\n', ''),
+                       'payload': payload,
                        'obj': None})
         except requests.ConnectionError as e:
             raise ApiConnectionError(e, '')
