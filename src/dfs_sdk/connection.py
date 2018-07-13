@@ -25,7 +25,7 @@ from .schema.reader import get_reader
 __copyright__ = "Copyright 2017, Datera, Inc."
 
 LOG = get_log(__name__)
-CACHED_SCHEMA = ".cached-schema"
+CACHED_SCHEMA = "/tmp/.cached-schema"
 
 # TODO(_alastor_): Add certificate verification
 urllib3.disable_warnings()
