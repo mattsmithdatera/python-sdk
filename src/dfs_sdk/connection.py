@@ -159,7 +159,7 @@ class ApiConnection(object):
                        'rid': request_id,
                        'delta': timedelta,
                        'url': resp.url,
-                       'payload': payload,
+                       'payload': payload.replace('\n', ''),
                        'obj': None})
         except requests.ConnectionError as e:
             raise ApiConnectionError(e, '')
