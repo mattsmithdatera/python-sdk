@@ -118,41 +118,49 @@ class ApiConnection(object):
                 protocol, host, port, api_version.strip('v'),
                 urlpath.strip('/'))
         request_id = uuid.uuid4()
-        if not sensitive:
-            LOG.debug("\nDatera Trace ID: %(tid)s\n"
-                      "Datera Request ID: %(rid)s\n"
-                      "Datera Request URL: %(url)s\n"
-                      "Datera Request Method: %(method)s\n"
-                      "Datera Request Payload: %(payload)s\n"
-                      "Datera Request Headers: %(header)s\n",
-                      {'tid': getattr(
-                          self._context.thread_local, 'trace_id', None),
-                       'rid': request_id,
-                       'url': connection_string,
-                       'method': method,
-                       'payload': body,
-                       'header': headers})
+        if sensitive:
+            dbody = "********"
+            dheaders = "********"
+        else:
+            dbody = body
+            dheaders = headers
+        LOG.debug("\nDatera Trace ID: %(tid)s\n"
+                  "Datera Request ID: %(rid)s\n"
+                  "Datera Request URL: %(url)s\n"
+                  "Datera Request Method: %(method)s\n"
+                  "Datera Request Payload: %(payload)s\n"
+                  "Datera Request Headers: %(header)s\n",
+                  {'tid': getattr(
+                      self._context.thread_local, 'trace_id', None),
+                   'rid': request_id,
+                   'url': connection_string,
+                   'method': method,
+                   'payload': dbody,
+                   'header': dheaders})
         t1 = time.time()
         try:
             resp = getattr(requests, method.lower())(
                     connection_string, headers=headers, params=params,
                     data=body, verify=False, files=files, cert=cert_data)
-            if not sensitive or '/api' in resp.url:
-                t2 = time.time()
-                timedelta = round(t2 - t1, 3)
-                LOG.debug("\nDatera Trace ID: %(tid)s\n"
-                          "Datera Response ID: %(rid)s\n"
-                          "Datera Response TimeDelta: %(delta)ss\n"
-                          "Datera Response URL: %(url)s\n"
-                          "Datera Response Payload: %(payload)s\n"
-                          "Datera Response Object: %(obj)s\n",
-                          {'tid': getattr(
-                              self._context.thread_local, 'trace_id', None),
-                           'rid': request_id,
-                           'delta': timedelta,
-                           'url': resp.url,
-                           'payload': resp.content,
-                           'obj': resp})
+            if sensitive or '/api' in resp.url:
+                payload = "*********"
+            else:
+                payload = resp.content
+            t2 = time.time()
+            timedelta = round(t2 - t1, 3)
+            LOG.debug("\nDatera Trace ID: %(tid)s\n"
+                      "Datera Response ID: %(rid)s\n"
+                      "Datera Response TimeDelta: %(delta)ss\n"
+                      "Datera Response URL: %(url)s\n"
+                      "Datera Response Payload: %(payload)s\n"
+                      "Datera Response Object: %(obj)s\n",
+                      {'tid': getattr(
+                          self._context.thread_local, 'trace_id', None),
+                       'rid': request_id,
+                       'delta': timedelta,
+                       'url': resp.url,
+                       'payload': payload,
+                       'obj': None})
         except requests.ConnectionError as e:
             raise ApiConnectionError(e, '')
         except requests.Timeout as e:
@@ -187,9 +195,13 @@ class ApiConnection(object):
                         data = json.loads(fdata.decode('utf-8'))
                 if self._version in data:
                     return data[self._version]
-                data[self._version] = self.read_endpoint(endpoint)
+                # Making it sensitive so it doesn't clog the logs
+                data[self._version] = self.read_endpoint(endpoint,
+                                                         sensitive=True)
         else:
-            data = {self._version: self.read_endpoint(endpoint)}
+            # Making it sensitive so it doesn't clog the logs
+            data = {self._version: self.read_endpoint(endpoint,
+                                                      sensitive=True)}
         with io.open(CACHED_SCHEMA, 'wb+') as f:
             jdata = json.dumps(data)
             try:
@@ -280,13 +292,14 @@ class ApiConnection(object):
         else:
             raise ApiError(msg, resp_data)
 
-    def _do_request(self, method, urlpath, files=None, data=None, params=None):
+    def _do_request(self, method, urlpath, files=None, data=None, params=None,
+                    **kwargs):
         """
         Handle the aggregation of different pages for the request
         """
         resp_meta, resp_data = \
             self._do_auth_request(method, urlpath, data=data, params=params,
-                                  files=files)
+                                  files=files, **kwargs)
 
         # No metadata means no pagination
         if "metadata" not in resp_meta:
@@ -325,11 +338,12 @@ class ApiConnection(object):
 
     @_with_authentication
     def _do_auth_request(self, method, urlpath, files=None, data=None,
-                         params=None):
+                         params=None, **kwargs):
         """
         Translates to/from JSON as needed, calls _http_connect_request()
         Bubbles up ApiError on error
         """
+        sensitive = kwargs.get('sensitive')
         headers = {}
         # tenant header
         if self._version == 'v2':
@@ -366,7 +380,8 @@ class ApiConnection(object):
 
         parsed_data, resp_status, resp_reason, _resp_headers = \
             self._http_connect_request(method, urlpath, params=params,
-                                       body=body, headers=headers, files=files)
+                                       body=body, headers=headers, files=files,
+                                       sensitive=sensitive)
 
         ret_metadata = {}
         ret_data = parsed_data
@@ -382,7 +397,7 @@ class ApiConnection(object):
 
     ########################################
 
-    def create_entity(self, path, data):
+    def create_entity(self, path, data, sensitive=False):
         """
         Returns the parsed response data
         Raises ApiError on error
@@ -390,10 +405,11 @@ class ApiConnection(object):
           path (str) - Endpoint path, e.g. "/app_templates"
           data (dict) - e.g. {"name": "myapptemplate"}
         """
-        _metadata, data = self._do_request("POST", path, data=data)
+        _metadata, data = self._do_request("POST", path, data=data,
+                                           sensitive=sensitive)
         return data
 
-    def read_endpoint(self, path, params=None):
+    def read_endpoint(self, path, params=None, sensitive=False):
         """
         Returns the parsed response data
         Raises ApiError on error
@@ -401,10 +417,11 @@ class ApiConnection(object):
           path (str) - Endpoint path, e.g. "/app_templates"
           params (dict) - Querry Params, e.g. "/app_templates?key=value"
         """
-        _metadata, data = self._do_request("GET", path, params=params)
+        _metadata, data = self._do_request("GET", path, params=params,
+                                           sensitive=sensitive)
         return data
 
-    def read_entity(self, path, params=None):
+    def read_entity(self, path, params=None, sensitive=False):
         """
         Returns the parsed response data
         Raises ApiError on error
@@ -412,10 +429,11 @@ class ApiConnection(object):
           path (str) - Entity path, e.g. "/app_templates/myapptemplate"
           params (dict) - Querry Params, e.g. "/app_templates?key=value"
         """
-        _metadata, data = self._do_request("GET", path, params=params)
+        _metadata, data = self._do_request("GET", path, params=params,
+                                           sensitive=sensitive)
         return data
 
-    def update_endpoint(self, path, data):
+    def update_endpoint(self, path, data, sensitive=False):
         """
         Returns the parsed response data
         Raises ApiError on error
@@ -423,10 +441,11 @@ class ApiConnection(object):
           path (str) - Endpoint path
           data (dict)
         """
-        _metadata, data = self._do_request("PUT", path, data=data)
+        _metadata, data = self._do_request("PUT", path, data=data,
+                                           sensitive=sensitive)
         return data
 
-    def update_entity(self, path, data):
+    def update_entity(self, path, data, sensitive=False):
         """
         Returns the parsed response data
         Raises ApiError on error
@@ -434,21 +453,23 @@ class ApiConnection(object):
           path (str) - Entity path, e.g. "/app_templates/myapptemplate"
           data (dict)
         """
-        _metadata, data = self._do_request("PUT", path, data=data)
+        _metadata, data = self._do_request("PUT", path, data=data,
+                                           sensitive=sensitive)
         return data
 
-    def upload_endpoint(self, path, files, data):
+    def upload_endpoint(self, path, files, data, sensitive=False):
 
         # files = {'file': (file_name, io.open(file_name, 'rb'))}
         _metadata, data = self._do_request("PUT", path, data=data,
-                                           files=files)
+                                           files=files, sensitive=sensitive)
 
-    def delete_entity(self, path, data=None):
+    def delete_entity(self, path, data=None, sensitive=False):
         """
         Returns the parsed response data
         Raises ApiError on HTTP error
         Parameters:
           path (str) - Entity path, e.g. "/app_templates/myapptemplate"
         """
-        _metadata, data = self._do_request("DELETE", path, data=data)
+        _metadata, data = self._do_request("DELETE", path, data=data,
+                                           sensitive=sensitive)
         return data
