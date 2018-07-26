@@ -515,7 +515,7 @@ class ApiConnection(object):
                                            files=files, sensitive=sensitive)
         return data
 
-    def stream_endpoint(self, path, data, interval):
+    def stream_endpoint(self, path, data, interval, timeout):
         """
         Streams Endpoint Data
         Raises ApiError on error
@@ -523,13 +523,19 @@ class ApiConnection(object):
           path (str) - Entity path, e.g. "/app_templates/myapptemplate"
           data (dict)
         """
-        for _metadata, data in self._do_stream_request(path, data=data):
-            yield _metadata, data
-            try:
+        if timeout == 0:
+            timeout = "inf"
+        try:
+            for _metadata, data in self._do_stream_request(path, data=data):
+                yield _metadata, data
                 time.sleep(interval)
-            except KeyboardInterrupt:
-                LOG.debug("Ctrl-C recieved, ending stream")
-                return
+                if timeout != "inf":
+                    timeout -= interval
+                    if timeout <= 0:
+                        LOG.debug("Timeout reached, ending stream")
+                        return
+        except KeyboardInterrupt:
+            LOG.debug("Ctrl-C recieved, ending stream")
 
     def delete_entity(self, path, data=None, sensitive=False):
         """

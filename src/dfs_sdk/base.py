@@ -355,11 +355,12 @@ class GenericEndpoint(Endpoint):
         return data
 
     def stream(self, **params):
-        """Stream datat from the endpoint with specified 'interval' value
-           in seconds"""
+        """Stream data from the endpoint with specified 'interval' and
+           'timeout' values in seconds"""
         interval = params.pop('interval', 0)
+        timeout = params.pop('timeout', 0)
         return self.context.connection.stream_endpoint(
-            self._path, params, interval=interval)
+            self._path, params, interval, timeout)
 
     def set(self, **params):
         """Sets the endpoint with list passed"""
