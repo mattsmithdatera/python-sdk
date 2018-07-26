@@ -347,10 +347,19 @@ class GenericEndpoint(Endpoint):
         return entity
 
     def upload(self, **params):
+        """Upload multipart/file data to and endpoint.  Use parameter 'files'
+           to specify the files to be uploaded"""
         files = params.pop('files')
         data = self.context.connection.upload_endpoint(
             self._path, files, params)
         return data
+
+    def stream(self, **params):
+        """Stream datat from the endpoint with specified 'interval' value
+           in seconds"""
+        interval = params.pop('interval', 0)
+        return self.context.connection.stream_endpoint(
+            self._path, params, interval=interval)
 
     def set(self, **params):
         """Sets the endpoint with list passed"""

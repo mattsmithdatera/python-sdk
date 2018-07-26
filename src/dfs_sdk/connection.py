@@ -101,8 +101,7 @@ class ApiConnection(object):
         self.reader = None
         self._logged_in = False
 
-    def _http_connect_request(self, method, urlpath, headers=None, params=None,
-                              body=None, files=None, sensitive=False):
+    def _get_request_attrs(self, urlpath):
         if self._secure:
             protocol = 'https'
             port = REST_PORT_HTTPS
@@ -113,10 +112,31 @@ class ApiConnection(object):
             cert_data = None
         api_version = self._version
         host = self._hostname
-
         connection_string = '{}://{}:{}/v{}/{}'.format(
                 protocol, host, port, api_version.strip('v'),
                 urlpath.strip('/'))
+        return protocol, port, cert_data, api_version, host, connection_string
+
+    # def _http_stream_request(self, urlpath, headers=None, params=None,
+    #                          body=None):
+    #     protocol, port, cert_data, api_version, host, connection_string = \
+    #         self._get_request_attrs(urlpath)
+    #     resp = requests.get(connection_string, headers=headers,
+    #                         params=params, data=body, verify=False,
+    #                         cert=cert_data)
+    #     for line in resp.iter_lines():
+    #         if not line:
+    #             continue
+    #         try:
+    #             line = line.decode('utf-8')
+    #         except AttributeError:
+    #             line = str(line)
+    #         yield line
+
+    def _http_connect_request(self, method, urlpath, headers=None, params=None,
+                              body=None, files=None, sensitive=False):
+        protocol, port, cert_data, api_version, host, connection_string = \
+                self._get_request_attrs(urlpath)
         request_id = uuid.uuid4()
         if sensitive:
             dbody = "********"
@@ -341,14 +361,8 @@ class ApiConnection(object):
                     resp_data.extend(resp_data_container)
         return resp_meta, resp_data
 
-    @_with_authentication
-    def _do_auth_request(self, method, urlpath, files=None, data=None,
-                         params=None, **kwargs):
-        """
-        Translates to/from JSON as needed, calls _http_connect_request()
-        Bubbles up ApiError on error
-        """
-        sensitive = kwargs.get('sensitive')
+    def _build_body_headers(self, data=None, files=None, params=None,
+                            **kwargs):
         headers = {}
         # tenant header
         if self._version == 'v2':
@@ -382,7 +396,18 @@ class ApiConnection(object):
             body = data
         else:
             body = json.dumps(data)
+        return body, headers
 
+    @_with_authentication
+    def _do_auth_request(self, method, urlpath, files=None, data=None,
+                         params=None, **kwargs):
+        """
+        Translates to/from JSON as needed, calls _http_connect_request()
+        Bubbles up ApiError on error
+        """
+        sensitive = kwargs.get('sensitive')
+        body, headers = self._build_body_headers(
+            data=data, params=params, files=files)
         parsed_data, resp_status, resp_reason, _resp_headers = \
             self._http_connect_request(method, urlpath, params=params,
                                        body=body, headers=headers, files=files,
@@ -400,6 +425,20 @@ class ApiConnection(object):
                 ret_metadata = parsed_data
         return ret_metadata, ret_data
 
+    @_with_authentication
+    def _do_stream_request(self, urlpath, data=None, params=None, **kwargs):
+        body, headers = self._build_body_headers(data=data, params=params)
+        try:
+            while True:
+                parsed_data, resp_status, resp_reason, resp_headers = \
+                    self._http_connect_request(
+                        "GET", urlpath, params=params, body=body,
+                        headers=headers, **kwargs)
+                ret_data = parsed_data.pop('data')
+                ret_metadata = parsed_data
+                yield ret_metadata, ret_data
+        except KeyboardInterrupt:
+            LOG.debug("Ctrl-C recieved, ending stream")
     ########################################
 
     def create_entity(self, path, data, sensitive=False):
@@ -463,10 +502,34 @@ class ApiConnection(object):
         return data
 
     def upload_endpoint(self, path, files, data, sensitive=False):
-
-        # files = {'file': (file_name, io.open(file_name, 'rb'))}
+        """
+        Returns the parsed response data
+        Raises ApiError on error
+        Parameters:
+          path (str) - Entity path, e.g. "/app_templates/myapptemplate"
+          data (dict)
+          files (list)
+          sensitive (boolean)
+        """
         _metadata, data = self._do_request("PUT", path, data=data,
                                            files=files, sensitive=sensitive)
+        return data
+
+    def stream_endpoint(self, path, data, interval):
+        """
+        Streams Endpoint Data
+        Raises ApiError on error
+        Parameters:
+          path (str) - Entity path, e.g. "/app_templates/myapptemplate"
+          data (dict)
+        """
+        for _metadata, data in self._do_stream_request(path, data=data):
+            yield _metadata, data
+            try:
+                time.sleep(interval)
+            except KeyboardInterrupt:
+                LOG.debug("Ctrl-C recieved, ending stream")
+                return
 
     def delete_entity(self, path, data=None, sensitive=False):
         """
