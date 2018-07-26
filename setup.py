@@ -1,10 +1,28 @@
-#!/usr/bin/env
+#!/usr/bin/env python
+
+import io
+import os
+import re
 
 from setuptools import setup, find_packages
 
+CONSTANTS_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'src', 'dfs_sdk', 'constants.py')
+
+VRE = re.compile("""VERSION = ['"](.*)['"]""")
+
+
+def get_version():
+    with io.open(CONSTANTS_FILE) as f:
+        return VRE.search(f.read()).group(1)
+
+
+version = get_version()
+
 setup(
     name='dfs_sdk',
-    version='1.2.7',
+    version=version,
     description='Datera Fabric Python SDK',
     long_description='Install Instructions: sudo python setup.py install',
     author='Datera Automation Team',
@@ -16,5 +34,6 @@ setup(
     install_requires=[],
     scripts=['utils/dhutil'],
     url='https://github.com/Datera/python-sdk/',
-    download_url='https://github.com/Datera/python-sdk/tarball/v1.2.7'
+    download_url='https://github.com/Datera/python-sdk/tarball/v{}'.format(
+        version)
 )
