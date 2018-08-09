@@ -36,6 +36,7 @@ def _api_getter(base):
               immediate_login (bool) - If True, login when this object is
                                        instantiated, else wait to login until
                                        a request is sent
+              ldap_server (string) - LDAP server
             """
             assert self._version is not None
 
@@ -68,6 +69,9 @@ def _api_getter(base):
             cert = kwargs.get('cert', None)
             cert_key = kwargs.get('cert_key', None)
             thread_local = kwargs.get('thread_local', threading.local())
+            ldap_server = kwargs.get('remote_server', None)
+            if not ldap_server:
+                ldap_server = kwargs.get('ldap_server', None)
             if not self._context:
                 self._context = ApiContext()
                 self.__create_context(
@@ -82,7 +86,8 @@ def _api_getter(base):
                         strict=strict,
                         cert=cert,
                         cert_key=cert_key,
-                        thread_local=thread_local)
+                        thread_local=thread_local,
+                        ldap_server=ldap_server)
             return self._context
 
         @context.setter
@@ -95,7 +100,8 @@ def _api_getter(base):
                              password=None, tenant=None, timeout=None,
                              secure=True, version=DEFAULT_API_VERSION,
                              strict=True, cert=None, cert_key=None,
-                             thread_local=threading.local()):
+                             thread_local=threading.local(),
+                             remote_server=None):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -119,6 +125,7 @@ def _api_getter(base):
 
             context.connection = self._create_connection(context)
             context.thread_local = thread_local
+            context.remote_server = remote_server
 
         def _create_connection(self, context):
             """

@@ -95,6 +95,7 @@ class ApiConnection(object):
 
         self._secure = context.secure
         self._timeout = context.timeout
+        self._ldap_server = context.ldap_server
 
         self._lock = threading.Lock()
         self._key = None
@@ -116,22 +117,6 @@ class ApiConnection(object):
                 protocol, host, port, api_version.strip('v'),
                 urlpath.strip('/'))
         return protocol, port, cert_data, api_version, host, connection_string
-
-    # def _http_stream_request(self, urlpath, headers=None, params=None,
-    #                          body=None):
-    #     protocol, port, cert_data, api_version, host, connection_string = \
-    #         self._get_request_attrs(urlpath)
-    #     resp = requests.get(connection_string, headers=headers,
-    #                         params=params, data=body, verify=False,
-    #                         cert=cert_data)
-    #     for line in resp.iter_lines():
-    #         if not line:
-    #             continue
-    #         try:
-    #             line = line.decode('utf-8')
-    #         except AttributeError:
-    #             line = str(line)
-    #         yield line
 
     def _http_connect_request(self, method, urlpath, headers=None, params=None,
                               body=None, files=None, sensitive=False):
@@ -240,10 +225,18 @@ class ApiConnection(object):
     def login(self, **params):
         """ Login to the API, store the key, get schema """
         if params:
-            send_data = {
-                "name": params.get("name"), "password": params.get("password")}
+            if "ldap_server" in params.keys():
+                send_data = {"name": params.get("name"),
+                             "password": params.get("password"),
+                             "remote_server": params.get("ldap_server")}
+            else:
+                send_data = {"name": params.get("name"),
+                             "password": params.get("password")}
         else:
             send_data = {"name": self._username, "password": self._password}
+            if self._ldap_server:
+                send_data.update({'remote_server': self._ldap_server})
+
         body = json.dumps(send_data)
 
         headers = {}
