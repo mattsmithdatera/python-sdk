@@ -159,6 +159,7 @@ class Entity(collections.Mapping):
         """ Create a sub-endpoint of the given endpoint type """
         assert(issubclass(klass, Endpoint))
         subendpoint = klass(self.context, self._path)
+        subendpoint = self.context.prepare_endpoint(subendpoint)
         subendpoint_name = klass._name
         setattr(self, subendpoint_name, subendpoint)
 
@@ -169,6 +170,7 @@ class Entity(collections.Mapping):
 
         data = self.context.connection.read_entity(self._path, params)
         entity = self.__class__(self.context, data, self._name, self._path)
+        entity = self.context.prepare_entity(entity)
         if self._tenant:
             entity._tenant = self._tenant
         return entity
@@ -177,12 +179,15 @@ class Entity(collections.Mapping):
         """ Send an API request to modify this entity """
         data = self.context.connection.update_entity(self._path, params)
         entity = self.__class__(self.context, data, self._name, self._path)
+        entity = self.context.prepare_entity(entity)
         return entity
 
     def delete(self, **params):
         """ Send an API request to delete this entity """
         data = self.context.connection.delete_entity(self._path, data=params)
         entity = self.__class__(self.context, data, self._name, self._path)
+        entity = self.context.prepare_entity(entity)
+        entity = self.context.on_entity_delete(entity)
         return entity
 
 
@@ -250,6 +255,7 @@ class Endpoint(object):
         """ Create a sub-endpoint of the given endpoint type """
         assert(issubclass(klass, Endpoint))
         subendpoint = klass(self.context, self._path)
+        subendpoint = self.context.prepare_endpoint(subendpoint)
         subendpoint_name = klass._name
         setattr(self, subendpoint_name, subendpoint)
 
@@ -290,6 +296,7 @@ class Endpoint(object):
         if not name:
             name = snake_to_camel(self._name + "_entity")
         entity = self._entity_cls(self.context, data, name, self._path)
+        entity = self.context.prepare_entity(entity)
         return entity
 
     def get(self, *args, **params):
@@ -343,7 +350,7 @@ class GenericEndpoint(Endpoint):
         """
         data = self.context.connection.create_entity(self._path, params)
         entity = self._new_contained_entity(data)
-
+        entity = self.context.on_entity_create(entity)
         return entity
 
     def upload(self, **params):
