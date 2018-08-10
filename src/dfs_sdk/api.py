@@ -101,7 +101,7 @@ def _api_getter(base):
                              secure=True, version=DEFAULT_API_VERSION,
                              strict=True, cert=None, cert_key=None,
                              thread_local=threading.local(),
-                             remote_server=None):
+                             ldap_server=None):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -125,7 +125,7 @@ def _api_getter(base):
 
             context.connection = self._create_connection(context)
             context.thread_local = thread_local
-            context.remote_server = remote_server
+            context.ldap_server = ldap_server
 
         def _create_connection(self, context):
             """
