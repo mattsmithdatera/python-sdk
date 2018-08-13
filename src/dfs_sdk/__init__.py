@@ -2,6 +2,8 @@
 Python package for interacting with the REST interface of a Datera
 storage cluster.
 """
+from __future__ import (print_function, absolute_import, unicode_literals,
+                        division)
 # Renaming imports to prevent easy top-level importing
 # We want folks to use get_api(), not these object directly
 from .api import DateraApi as _DateraApi
@@ -19,6 +21,7 @@ from .exceptions import ApiTimeoutError
 from .exceptions import ApiInternalError
 from .exceptions import ApiUnavailableError
 from .dlogging import setup_logging
+from .hooks.base import load_hooks
 
 
 __copyright__ = "Copyright 2017, Datera, Inc."
@@ -31,7 +34,7 @@ VERSION_MAP = {"v2": _DateraApi,
 
 
 def get_api(hostname, username, password, version, tenant=None, strict=True,
-            **kwargs):
+            hooks=None, **kwargs):
     """Main entrypoint into the SDK
 
     Returns a DateraApi object
@@ -50,12 +53,15 @@ def get_api(hostname, username, password, version, tenant=None, strict=True,
             "versions: {}".format(version, API_VERSIONS))
     if version == "v2" and tenant:
         raise ValueError("API version v2 does not support multi-tenancy")
-    return VERSION_MAP[version](hostname,
-                                username=username,
-                                password=password,
-                                tenant=tenant,
-                                strict=strict,
-                                **kwargs)
+    api = VERSION_MAP[version](hostname,
+                               username=username,
+                               password=password,
+                               tenant=tenant,
+                               strict=strict,
+                               **kwargs)
+    if hooks:
+        load_hooks(api, hooks)
+    return api
 
 
 __all__ = ['get_api',

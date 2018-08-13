@@ -24,7 +24,8 @@ Version History:
              which allows disabling endpoint validity checks if set to 'False'
     1.2.8 -- Added support for certs, trace_ids and standard logging
     1.2.9 -- Added stream call for use with Metrics style endpoints
-    1.2.10 -- Added back create/delete hooks
+    1.2.10 -- Added back create/delete hooks, implemented hook loading and
+              a hook inheritance interface.
 """
 
 API_VERSIONS = ("v2", "v2.1", "v2.2")
