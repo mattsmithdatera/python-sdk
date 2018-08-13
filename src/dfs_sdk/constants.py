@@ -4,7 +4,7 @@ since many other modules import this one
 """
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-VERSION = "1.2.9"
+VERSION = "1.2.10"
 
 VERSION_HISTORY = """
 Version History:
@@ -24,6 +24,7 @@ Version History:
              which allows disabling endpoint validity checks if set to 'False'
     1.2.8 -- Added support for certs, trace_ids and standard logging
     1.2.9 -- Added stream call for use with Metrics style endpoints
+    1.2.10 -- Added back create/delete hooks
 """
 
 API_VERSIONS = ("v2", "v2.1", "v2.2")
