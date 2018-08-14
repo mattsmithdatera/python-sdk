@@ -75,6 +75,7 @@ def add_stdout(level):
 
 class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
     def __init__(self, filename, **kwargs):
+        self.delay = kwargs.get('delay', None)
         backupCount = kwargs.get('backupCount', 0)
         self.backup_count = backupCount
         logging.handlers.RotatingFileHandler.__init__(self, filename, **kwargs)
