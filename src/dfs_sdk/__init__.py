@@ -4,13 +4,15 @@ storage cluster.
 """
 from __future__ import (print_function, absolute_import, unicode_literals,
                         division)
+
+import os
 # Renaming imports to prevent easy top-level importing
 # We want folks to use get_api(), not these object directly
 from .api import DateraApi as _DateraApi
 from .api import DateraApi21 as _DateraApi21
 from .api import DateraApi22 as _DateraApi22
 
-from .constants import API_VERSIONS
+from .constants import API_VERSIONS, CACHED_SCHEMA
 from .exceptions import ApiError
 from .exceptions import ApiAuthError
 from .exceptions import ApiInvalidRequestError
@@ -34,7 +36,7 @@ VERSION_MAP = {"v2": _DateraApi,
 
 
 def get_api(hostname, username, password, version, tenant=None, strict=True,
-            hooks=None, **kwargs):
+            hooks=None, refresh=False, **kwargs):
     """Main entrypoint into the SDK
 
     Returns a DateraApi object
@@ -45,6 +47,9 @@ def get_api(hostname, username, password, version, tenant=None, strict=True,
       version (str) - must be in constants.API_VERSIONS
     Optional parameters:
       tenant (str) - Tenant, for v2.1+ API only
+      strict (bool) - Force all requests to use HTTPS (default True)
+      hooks (list) - List of hook instances use (see dfs_sdk/hooks/base.py)
+      refresh (bool) - Re-generate .cached-schema file from /api endpoint
     """
     setup_logging(kwargs.get('disable_log', False))
     if version not in API_VERSIONS:
@@ -61,6 +66,11 @@ def get_api(hostname, username, password, version, tenant=None, strict=True,
                                **kwargs)
     if hooks:
         load_hooks(api, hooks)
+    if refresh:
+        try:
+            os.remove(CACHED_SCHEMA)
+        except OSError:
+            pass
     return api
 
 

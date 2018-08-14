@@ -18,14 +18,13 @@ from .exceptions import ApiInternalError, ApiNotFoundError
 from .exceptions import ApiInvalidRequestError, ApiConflictError
 from .exceptions import ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
-from .constants import VERSION
+from .constants import VERSION, CACHED_SCHEMA
 from .dlogging import get_log
 from .schema.reader import get_reader
 
 __copyright__ = "Copyright 2017, Datera, Inc."
 
 LOG = get_log(__name__)
-CACHED_SCHEMA = "/tmp/.cached-schema"
 
 # TODO(_alastor_): Add certificate verification
 urllib3.disable_warnings()
