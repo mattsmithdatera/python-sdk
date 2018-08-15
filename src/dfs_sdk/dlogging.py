@@ -7,7 +7,8 @@ logging config file
 Set the DSDK_LOG_STDOUT environment variable to a level (eg: debug, info) to
 also send logging to STDOUT at the specified logging level
 
-Logs are rotated after reaching 10 MB and compressed (gz) after one rotation
+Logs are rotated after reaching 50 MB (default, configurable in
+debug_logging.json) and compressed (gz) after rotation
 """
 import gzip
 import io

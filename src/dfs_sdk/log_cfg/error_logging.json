@@ -14,8 +14,8 @@
             "level": "ERROR",
             "formatter": "simple",
             "filename": "dsdk_error.log",
-            "maxBytes": 10485760,
-            "backupCount": 20,
+            "maxBytes": 52428800,
+            "backupCount": 5,
             "encoding": "utf8"
         }
     },
