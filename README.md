@@ -205,7 +205,9 @@ Common methods for all objects include **create(), set(), delete(), list()**
 ```python
         ai.delete()
 ```
-## 'dhutil' : Datera Host Utility
+## (DEPRECATED) 'dhutil' : Datera Host Utility
+
+### NOTE: This utility has been deprecated by the Datera Bare-Metal Provisioner (dbmp).  http://github.com/Datera/dbmp
 
 The 'dhutil' host-utility is provided along with this SDK.
 'dhutil' can be used as both a reference example for using the SDK,
