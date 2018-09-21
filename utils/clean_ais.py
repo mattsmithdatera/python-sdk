@@ -106,7 +106,7 @@ if __name__ == "__main__":
                         help="Match all AppInstances")
     parser.add_argument("-y", "--yes", action='store_true',
                         help="DANGER!!! Bypass confirmation prompt")
-    parser.add_argument("-m", "--threads", default=5,
+    parser.add_argument("-m", "--threads", default=5, type=int,
                         help="Threads to use for deletion")
     parser.add_argument("-s", "--stdin", action='store_true',
                         help="Takes STDIN input list and deletes matching AIs "
