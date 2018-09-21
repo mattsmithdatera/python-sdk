@@ -23,9 +23,9 @@ To install:
     python setup.py install
 ```
 
-## Datera Universal Config
+## Universal Datera Config
 
-The Datera Universal Config (DUC) is a config that can be specified in a
+The Universal Datera Config (UDC) is a config that can be specified in a
 number of ways:
 
 * JSON file with any of the following names:
@@ -50,7 +50,7 @@ number of ways:
     - DAT_PASS
     - DAT_TENANT
     - DAT_API
-* Most tools built to use the Datera Universal Config will also allow
+* Most tools built to use the Universal Datera Config will also allow
   for providing/overriding any of the config values via command line flags.
     - --hostname
     - --username
@@ -58,9 +58,9 @@ number of ways:
     - --tenant
     - --api-version
 
-## Developing with Datera Universal Config
+## Developing with Universal Datera Config
 
-To use DUC in a new python tool is very simple just add the following to
+To use UDC in a new python tool is very simple just add the following to
 your python script:
 
 ```python
