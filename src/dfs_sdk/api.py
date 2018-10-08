@@ -3,7 +3,7 @@ Provides the DateraApi objects
 """
 import threading
 
-from .constants import DEFAULT_HTTP_TIMEOUT
+from .constants import DEFAULT_HTTP_TIMEOUT, VERSION
 from .connection import ApiConnection
 from .context import ApiContext
 from .base import Endpoint as _Endpoint
@@ -70,6 +70,7 @@ def _api_getter(base):
             cert_key = kwargs.get('cert_key', None)
             thread_local = kwargs.get('thread_local', threading.local())
             ldap_server = kwargs.get('remote_server', None)
+            extra_headers = kwargs.get('extra_headers', None)
             if not ldap_server:
                 ldap_server = kwargs.get('ldap_server', None)
             if not self._context:
@@ -87,7 +88,8 @@ def _api_getter(base):
                         cert=cert,
                         cert_key=cert_key,
                         thread_local=thread_local,
-                        ldap_server=ldap_server)
+                        ldap_server=ldap_server,
+                        extra_headers=extra_headers)
             return self._context
 
         @context.setter
@@ -101,7 +103,7 @@ def _api_getter(base):
                              secure=True, version=DEFAULT_API_VERSION,
                              strict=True, cert=None, cert_key=None,
                              thread_local=threading.local(),
-                             ldap_server=None):
+                             ldap_server=None, extra_headers=None):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -122,6 +124,10 @@ def _api_getter(base):
             context.strict = strict
             context.cert = cert
             context.cert_key = cert_key
+            context.extra_headers = extra_headers
+            if not extra_headers:
+                context.extra_headers = {
+                    'Datera-Driver': 'Python-SDK-{}'.format(VERSION)}
 
             context.connection = self._create_connection(context)
             context.thread_local = thread_local

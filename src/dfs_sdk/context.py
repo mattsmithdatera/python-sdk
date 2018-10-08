@@ -28,6 +28,7 @@ class ApiContext(object):
         self.strict = True
         self.thread_local = None
         self.ldap_server = None
+        self.extra_headers = {}
 
         self.on_entity_create_hooks = []
         self.on_entity_delete_hooks = []

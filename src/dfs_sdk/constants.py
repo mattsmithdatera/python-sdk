@@ -4,7 +4,7 @@ since many other modules import this one
 """
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-VERSION = "1.2.11"
+VERSION = "1.2.12"
 
 VERSION_HISTORY = """
 Version History:
@@ -28,6 +28,7 @@ Version History:
               a hook inheritance interface.
     1.2.11 -- Increased log rotation size before compression to 50MB
               and decreased number of retained rotations to 5
+    1.2.12 -- Added capability of adding custom headers to requests
 """
 
 API_VERSIONS = ("v2", "v2.1", "v2.2")

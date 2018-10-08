@@ -95,6 +95,7 @@ class ApiConnection(object):
         self._secure = context.secure
         self._timeout = context.timeout
         self._ldap_server = context.ldap_server
+        self._extra_headers = context.extra_headers
 
         self._lock = threading.Lock()
         self._key = None
@@ -121,6 +122,7 @@ class ApiConnection(object):
                               body=None, files=None, sensitive=False):
         protocol, port, cert_data, api_version, host, connection_string = \
                 self._get_request_attrs(urlpath)
+        headers.update(**self._extra_headers)
         request_id = uuid.uuid4()
         if sensitive:
             dbody = "********"
