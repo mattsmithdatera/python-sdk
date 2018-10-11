@@ -19,6 +19,7 @@ SIP = re.compile(r'san_ip\s+?=\s+?(?P<san_ip>%s)' % IPRE_STR)
 SLG = re.compile(r'san_login\s+?=\s+?(?P<san_login>.*)')
 SPW = re.compile(r'san_password\s+?=\s+?(?P<san_password>.*)')
 TNT = re.compile(r'datera_tenant_id\s+?=\s+?(?P<tenant_id>.*)')
+LDP = re.compile(r'datera_ldap_server\s+?=\s+?(?P<ldap>.*)')
 
 LATEST = "2.2"
 FALLBACK = ["2", "2.1"]
@@ -36,7 +37,8 @@ EXAMPLE_CONFIG = {"mgmt_ip": "1.1.1.1",
                   "username": "admin",
                   "password": "password",
                   "tenant": "/root",
-                  "api_version": "2.2"}
+                  "api_version": "2.2",
+                  "ldap": ""}
 DATERA_RC = "datrc"
 
 ENV_MGMT = "DAT_MGMT"
@@ -44,6 +46,7 @@ ENV_USER = "DAT_USER"
 ENV_PASS = "DAT_PASS"
 ENV_TENANT = "DAT_TENANT"
 ENV_API = "DAT_API"
+ENV_LDAP = "DAT_LDAP"
 
 EXAMPLE_RC = """\
 # DATERA ENVIRONMENT VARIABLES
@@ -52,13 +55,15 @@ EXAMPLE_RC = """\
 {}=password
 {}=/root
 {}=2.2
-""".format(ENV_MGMT, ENV_USER, ENV_PASS, ENV_TENANT, ENV_API)
+{}=
+""".format(ENV_MGMT, ENV_USER, ENV_PASS, ENV_TENANT, ENV_API, ENV_LDAP)
 
 ENV_HELP = {ENV_MGMT: "Datera management IP address or hostname",
             ENV_USER: "Datera account username",
             ENV_PASS: "Datera account password",
             ENV_TENANT: "Datera tenant ID. eg: SE-OpenStack",
-            ENV_API: "Datera API version. eg: 2.2"}
+            ENV_API: "Datera API version. eg: 2.2",
+            ENV_LDAP: "Datera account LDAP server"}
 
 _CONFIG = {}
 _ARGS = None
@@ -121,6 +126,15 @@ def _check_config(config_file):
             "{}".format(missing, config_file))
 
 
+def _defaults():
+    if not _CONFIG.get("tenant"):
+        _CONFIG["tenant"] = "/root"
+    if not _CONFIG.get("api_version"):
+        _CONFIG["api_version"] = LATEST
+    if not _CONFIG.get("ldap"):
+        _CONFIG["ldap"] = ""
+
+
 def _read_config():
     global _CONFIG
     if _ARGS.config:
@@ -136,6 +150,7 @@ def _read_config():
         _CONFIG = {}
     _env_override()
     _cli_override()
+    _defaults()
     _check_config(config_file)
 
 
@@ -161,13 +176,21 @@ def _read_cinder_conf():
     san_login = SLG.search(data).group('san_login')
     san_password = SPW.search(data).group('san_password')
     tenant = TNT.search(data)
+    ldap = LDP.search(data)
     if tenant:
         tenant = tenant.group('tenant_id')
+    else:
+        tenant = "/root"
+    if ldap:
+        ldap = ldap.group('ldap')
+    else:
+        ldap = ""
     return {"mgmt_ip": san_ip,
             "username": san_login,
             "password": san_password,
             "tenant": tenant,
-            "api_version": LATEST}
+            "api_version": LATEST,
+            "ldap": ldap}
 
 
 def _cli_override():
@@ -181,6 +204,8 @@ def _cli_override():
         _CONFIG["tenant"] = _ARGS.tenant
     if _ARGS.api_version:
         _CONFIG["api_version"] = _ARGS.api_version
+    if _ARGS.ldap:
+        _CONFIG["ldap"] = _ARGS.ldap
 
 
 def _env_override():
@@ -194,6 +219,8 @@ def _env_override():
         _CONFIG["tenant"] = os.environ[ENV_TENANT]
     if ENV_API in os.environ:
         _CONFIG["api_version"] = os.environ[ENV_API]
+    if ENV_LDAP in os.environ:
+        _CONFIG["ldap"] = os.environ[ENV_LDAP]
 
 
 def vprint(*args, **kwargs):
@@ -220,6 +247,7 @@ def get_api(**kwargs):
                     tenant=tenant,
                     secure=True,
                     immediate_login=True,
+                    ldap_server=_CONFIG["ldap"],
                     **kwargs)
 
 
@@ -246,6 +274,7 @@ def get_argparser(add_help=True):
     parser.add_argument("--tenant",
                         help="Tenant Name/ID to search under,"
                              " use 'all' for all tenants")
+    parser.add_argument("--ldap", help="Datera LDAP authentication server")
     parser.add_argument("--config", help="Config file location")
     parser.add_argument("--print-envs", action="store_true",
                         help="Print supported environment variables")

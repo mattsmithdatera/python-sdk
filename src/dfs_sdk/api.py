@@ -36,7 +36,9 @@ def _api_getter(base):
               immediate_login (bool) - If True, login when this object is
                                        instantiated, else wait to login until
                                        a request is sent
+              thread_local (dict) - Thread local dictionary with trace id
               ldap_server (string) - LDAP server
+              extra_headers (dict) - Headers to pass along with all requests
             """
             assert self._version is not None
 

@@ -4,7 +4,7 @@ since many other modules import this one
 """
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-VERSION = "1.2.12"
+VERSION = "1.2.13"
 
 VERSION_HISTORY = """
 Version History:
@@ -29,6 +29,7 @@ Version History:
     1.2.11 -- Increased log rotation size before compression to 50MB
               and decreased number of retained rotations to 5
     1.2.12 -- Added capability of adding custom headers to requests
+    1.2.13 -- Added LDAP support to UDC config
 """
 
 API_VERSIONS = ("v2", "v2.1", "v2.2")

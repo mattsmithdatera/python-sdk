@@ -36,7 +36,8 @@ number of ways:
       "username": "admin",
       "password": "password",
       "tenant": "/root",
-      "api_version": "2.2"}
+      "api_version": "2.2"'
+      "ldap": ""}
 ```
 * The file can be in any of the following places.  This is also the lookup
   order for config files:
@@ -44,12 +45,15 @@ number of ways:
 * If no datera config file is found and a cinder.conf file is present, the
   config parser will try and pull connection credentials from the
   cinder.conf
+* Tenant and API version and LDAP are always optional, but it's generally
+  suggested to include them in your UDC file for easy reference.
 * Instead of a JSON file, environment variables can be used.
-    - DAT_MGMT
-    - DAT_USER
-    - DAT_PASS
-    - DAT_TENANT
-    - DAT_API
+    - `DAT_MGMT`
+    - `DAT_USER`
+    - `DAT_PASS`
+    - `DAT_TENANT`
+    - `DAT_API`
+    - `DAT_LDAP`
 * Most tools built to use the Universal Datera Config will also allow
   for providing/overriding any of the config values via command line flags.
     - --hostname
@@ -57,6 +61,7 @@ number of ways:
     - --password
     - --tenant
     - --api-version
+    - --ldap
 
 ## Developing with Universal Datera Config
 
