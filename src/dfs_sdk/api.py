@@ -55,8 +55,14 @@ def _api_getter(base):
 
             immediate_login = kwargs.get('immediate_login', True)
             if immediate_login:
+                # Support both ways of specifying ldap server
+                lds = kwargs.get('remote_server', None)
+                if not lds:
+                    lds = kwargs.get('ldap_server', None)
                 self.context.connection.login(
-                    name=kwargs['username'], password=kwargs['password'])
+                    name=kwargs.get('username'),
+                    password=kwargs.get('password'),
+                    ldap_server=lds)
 
             # Initialize sub-endpoints:
             super(_DateraBaseApi, self).__init__(self._context, None)
@@ -71,7 +77,13 @@ def _api_getter(base):
             cert = kwargs.get('cert', None)
             cert_key = kwargs.get('cert_key', None)
             thread_local = kwargs.get('thread_local', threading.local())
-            ldap_server = kwargs.get('remote_server', None)
+
+            # Support both ways of specifying ldap server
+            lds = kwargs.get('remote_server', None)
+            if not lds:
+                lds = kwargs.get('ldap_server', None)
+            ldap_server = lds
+
             extra_headers = kwargs.get('extra_headers', None)
             if not ldap_server:
                 ldap_server = kwargs.get('ldap_server', None)

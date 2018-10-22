@@ -226,7 +226,7 @@ class ApiConnection(object):
     def login(self, **params):
         """ Login to the API, store the key, get schema """
         if params:
-            if "ldap_server" in params.keys():
+            if params.get("ldap_server"):
                 send_data = {"name": params.get("name"),
                              "password": params.get("password"),
                              "remote_server": params.get("ldap_server")}

@@ -137,7 +137,7 @@ def _defaults():
 
 def _read_config():
     global _CONFIG
-    if _ARGS.config:
+    if _ARGS and _ARGS.config:
         config_file = _ARGS.config
     else:
         config_file = _search_config()
@@ -194,6 +194,8 @@ def _read_cinder_conf():
 
 
 def _cli_override():
+    if _ARGS is None:
+        return
     if _ARGS.hostname:
         _CONFIG["mgmt_ip"] = _ARGS.hostname
     if _ARGS.username:
@@ -247,7 +249,7 @@ def get_api(**kwargs):
                     tenant=tenant,
                     secure=True,
                     immediate_login=True,
-                    ldap_server=_CONFIG["ldap"],
+                    remote_server=_CONFIG["ldap"],
                     **kwargs)
 
 
