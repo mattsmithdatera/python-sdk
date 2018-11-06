@@ -163,9 +163,9 @@ Another way of viewing the managed object hierarchy is as follows:
 HTTP operations on URL endpoints is the only way to interact with the set of managed objects.
 URL's have the format:
 ```bash
-      http://192.168.42.13:7717/v2/<object_class>/[<instance>]/...
+      http://192.168.42.13:7717/v2.2/<object_class>/[<instance>]/...
 ```
-where **7717** is the port used to access the API, and "v2" corresponds to an API version control.
+where **7717** is the port used to access the API, and "v2.2" corresponds to an API version control.
 
 Briefly, the REST API supports 4 operations/methods **create (POST), modify (PUT), list (GET), delete (DELETE)**.
 Any input payload is in JSON format;  any return payload is in JSON format.
@@ -181,10 +181,32 @@ This Python SDK serves as a wrapper around the raw HTTP layer.
 The Datera module is named **dfs_sdk**, and the main entry point is called __DateraApi__.
 Obtaining an object handle can be done as follows:
 ```python
-        from dfs_sdk import DateraApi
-        [...]
-        api = DateraApi(username=user, password=password, hostname=ipaddr)
+    from dfs_sdk import get_api
+    [...]
+    api = get_api(mgmt_ip, username, password, "v2.2" **kwargs)
 ```
+
+You can also initialize the SDK using a Datera UDC file.  The following will read any valid
+UDC file on the system or from the current environment variables.
+
+```python
+    from dfs_sdk.scaffold import get_api
+    [...]
+    api = get_api()
+```
+## Configurable Options
+
+These options can be set on instantiation via the ``get_api`` constructor
+
+Option | Default | Description
+-------|-------- | -----------
+tenant | '/root' | Datera account tenant/subtenant
+timeout | 300 (s) | Timeout for HTTP requests
+secure | True | Whether to use HTTPS (False sets HTTP)
+strict | False | Whether to check if an endpoint is valid before sending request
+cert | None | HTTPS verification certificate
+cert\_key | None | HTTPS verification certificate key
+thread\_local | {} | Used for passing values down to the connection layer, usually for logging
 
 
 ## Common Objects, Examples and  Use Cases
@@ -193,7 +215,7 @@ Please see the **utils** directory for programming examples that cover the follo
 
 Common methods for all objects include **create(), set(), delete(), list()**
 
-+ To create an app_instance with name **FOO**:
++ To create an app\_instance with name **FOO**:
 ```python
         ai = api.app_instances.create(name="FOO")
 ```
@@ -206,50 +228,10 @@ Common methods for all objects include **create(), set(), delete(), list()**
 ```python
         ai.set(admin_state="offline")
 ```
-+ To delete a given app_instance:
++ To delete a given app\_instance:
 ```python
         ai.delete()
 ```
-## (DEPRECATED) 'dhutil' : Datera Host Utility
-
-### NOTE: This utility has been deprecated by the Datera Bare-Metal Provisioner (dbmp).  http://github.com/Datera/dbmp
-
-The 'dhutil' host-utility is provided along with this SDK.
-'dhutil' can be used as both a reference example for using the SDK,
-as well as providing some common host-side utility.  For example, a given storage/application lifecycle might looks like this:
-
-+ Create 5 app_instances named 'mongodev', each with a single 10G volume,
-and to perform the host-side iscsi scan and login:
-```bash
-          dhutil --basename mongodev --count 5 --size 10
-```
-+ View the multipath mapping to the host:
-```bash
-         dhutil --mpmap
-```
-+ Create **xfs** filesystems for the 'mongodb' volumes,  mount them at '/mnt' and change the permissions to 'mongodb:mongodb':
-```bash
-          dhutil --basename mongodev --mkfs --dirprefix /mnt --chown mongodb:mongodb
-```
-+ Completely teardown (unmount, remove directory, iscsi logout, delete app_instances):
-```bash
-          dhutil --basename mongodev --cleanall
-```
-Note that steps 1 and 3 could be combined as follows:
-```bash
-          dhutil --basename mongodev --count 5 --size 10 --mkfs --dirprefix /mnt --chown mongodb:mongodb
-```
-Or a corresponding "app_template" could be used, if available:
-```bash
-          dhutil --basename mongodev --count 5 --template mongodb ...
-```
-#### Caveats
-- **dhutil** presumes a 'singleton' model, whereby an app_instance
-    is created with a single storage_instance with a single volume.
-    Extending the functionality is left as an exercise for the reader
-and is strongly encouraged!
-
-
 ## Reporting Problems
 
 For problems and feedback, please email "support@datera.io"
