@@ -29,7 +29,10 @@ The Universal Datera Config (UDC) is a config that can be specified in a
 number of ways:
 
 * JSON file with any of the following names:
-    [.datera-config, datera-config, .datera-config.json, dateraconfig.json]
+    - .datera-config
+    - datera-config
+    - .datera-config.json
+    - datera-config.json
 * The JSON file has the following configuration:
 ```json
      {"mgmt_ip": "1.1.1.1",
@@ -41,7 +44,10 @@ number of ways:
 ```
 * The file can be in any of the following places.  This is also the lookup
   order for config files:
-    current directory --> home directory --> home/config directory --> /etc/datera
+    - current directory
+    - home directory
+    - home/config directory
+    - /etc/datera
 * If no datera config file is found and a cinder.conf file is present, the
   config parser will try and pull connection credentials from the
   cinder.conf
@@ -96,8 +102,9 @@ from dfs_sdk import scaffold
 scaffold.get_argparser()
 config = scaffold.get_config()
 ```
-NOTE: You MUST call ``scaffold.get_argparser()`` before calling
-``scaffold.get_config()``.  This may change in the future
+NOTE: It is no longer required to call ``scaffold.get_argparser()`` before
+calling ``scaffold.get_config()``.  This is only necessary if building
+a CLI tool that needs the cli parser.
 
 ## Logging
 

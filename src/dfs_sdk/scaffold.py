@@ -260,6 +260,8 @@ def print_config():
 
 
 def get_config():
+    if not _CONFIG:
+        _read_config()
     return copy.deepcopy(_CONFIG)
 
 
