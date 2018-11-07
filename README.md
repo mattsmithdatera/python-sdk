@@ -12,7 +12,7 @@ Details around the API itself are not necessarily covered through this SDK.
 
 ## Installation
 
-To install:
+### From Source
 ```bash
     apt-get install python-virtualenv (or yum install python-virtualenv for CentOS)
     virtualenv sdk
@@ -21,6 +21,11 @@ To install:
     cd python-sdk
     pip install -r requirements.txt
     python setup.py install
+```
+
+### From PYPI
+```bash
+    pip install -U dfs_sdk
 ```
 
 ## Universal Datera Config
