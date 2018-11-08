@@ -4,7 +4,7 @@ since many other modules import this one
 """
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-VERSION = "1.2.15"
+VERSION = "1.2.16"
 
 VERSION_HISTORY = """
 Version History:
@@ -33,6 +33,7 @@ Version History:
     1.2.15 -- Fixed ldap server bug, dropped get_argparser requirement from
               scaffold, changed required requests version because of security
               vulnerability. Updated the readme.
+    1.2.16 -- 503 retry support
 """
 
 API_VERSIONS = ("v2", "v2.1", "v2.2")
