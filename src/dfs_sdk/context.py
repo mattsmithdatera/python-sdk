@@ -28,6 +28,7 @@ class ApiContext(object):
         self.strict = True
         self.thread_local = None
         self.ldap_server = None
+        self.retry_503_type = None
         self.extra_headers = {}
 
         self.on_entity_create_hooks = []

@@ -77,6 +77,7 @@ def _api_getter(base):
             cert = kwargs.get('cert', None)
             cert_key = kwargs.get('cert_key', None)
             thread_local = kwargs.get('thread_local', threading.local())
+            retry_503_type = kwargs.get('retry_503_type', "backoff")
 
             # Support both ways of specifying ldap server
             lds = kwargs.get('remote_server', None)
@@ -103,7 +104,8 @@ def _api_getter(base):
                         cert_key=cert_key,
                         thread_local=thread_local,
                         ldap_server=ldap_server,
-                        extra_headers=extra_headers)
+                        extra_headers=extra_headers,
+                        retry_503_type=retry_503_type)
             return self._context
 
         @context.setter
@@ -117,7 +119,8 @@ def _api_getter(base):
                              secure=True, version=DEFAULT_API_VERSION,
                              strict=True, cert=None, cert_key=None,
                              thread_local=threading.local(),
-                             ldap_server=None, extra_headers=None):
+                             ldap_server=None, extra_headers=None,
+                             retry_503_type=None):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -142,16 +145,16 @@ def _api_getter(base):
             if not extra_headers:
                 context.extra_headers = {
                     'Datera-Driver': 'Python-SDK-{}'.format(VERSION)}
-
-            context.connection = self._create_connection(context)
             context.thread_local = thread_local
             context.ldap_server = ldap_server
+            context.retry_503_type = retry_503_type
+            context.connection = self._create_connection(context)
 
         def _create_connection(self, context):
             """
             Creates the API connection object used to communicate over REST
             """
-            return ApiConnection(context)
+            return ApiConnection.from_context(context)
 
     return _DateraBaseApi
 

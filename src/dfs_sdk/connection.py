@@ -5,6 +5,7 @@ import functools
 import io
 import json
 import os
+import random
 import threading
 import time
 import urllib3
@@ -16,9 +17,11 @@ from .exceptions import ApiError
 from .exceptions import ApiAuthError, ApiConnectionError, ApiTimeoutError
 from .exceptions import ApiInternalError, ApiNotFoundError
 from .exceptions import ApiInvalidRequestError, ApiConflictError
+from .exceptions import Api503BackoffError, Api503RandomError
+from .exceptions import Api503RetryError
 from .exceptions import ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
-from .constants import VERSION, CACHED_SCHEMA
+from .constants import VERSION, CACHED_SCHEMA, TIMEOUT_503
 from .dlogging import get_log
 from .schema.reader import get_reader
 
@@ -28,6 +31,7 @@ LOG = get_log(__name__)
 
 # TODO(_alastor_): Add certificate verification
 urllib3.disable_warnings()
+retry_type = "backoff"
 
 
 def _with_authentication(method):
@@ -57,6 +61,36 @@ def _with_authentication(method):
             self.login()
             return method(self, *args_copy, **kwargs_copy)
     return wrapper_method
+
+
+def _with_503_retry(method):
+    """
+    Decorator to wrap Api method calls so we retry on 503 errors
+    """
+    @functools.wraps(method)
+    def _wrapper_503(self, *args, **kwargs):
+        """ Call the original method with backoff """
+        timeout = TIMEOUT_503
+        backoff = 0
+        while timeout > 0:
+            try:
+                return method(self, *args, **kwargs)
+            except Api503RandomError:
+                slp = random.random() * 10
+                LOG.warn("Hit 503 Retry.  "
+                         "Adding random sleep and trying again in "
+                         "{}s".format(slp))
+                time.sleep(slp)
+                timeout -= slp
+            except Api503BackoffError:
+                slp = 1 + (backoff * backoff)
+                LOG.warn("Hit 503 Retry.  "
+                         "Backing off and trying again in {}s".format(slp))
+                time.sleep(slp)
+                timeout -= slp
+
+        raise
+    return _wrapper_503
 
 
 def _make_unicode_string(inval):
@@ -101,6 +135,11 @@ class ApiConnection(object):
         self._key = None
         self.reader = None
         self._logged_in = False
+
+    @classmethod
+    def from_context(cls, context):
+        cls.RETRY_TYPE = context.retry_503_type
+        return cls(context)
 
     def _get_request_attrs(self, urlpath):
         if self._secure:
@@ -223,6 +262,7 @@ class ApiConnection(object):
                 f.write(jdata.encode('utf-8'))
         return data[self._version]
 
+    @_with_503_retry
     def login(self, **params):
         """ Login to the API, store the key, get schema """
         if params:
@@ -306,8 +346,15 @@ class ApiConnection(object):
             raise ApiValidationFailedError(msg, resp_data)
         elif resp_status == 409:
             raise ApiConflictError(msg, resp_data)
-        elif resp_status == 500 or resp_status == 503:
+        elif resp_status == 500:
             raise ApiInternalError(msg, resp_data)
+        elif resp_status == 503:
+            if self._context.retry_503_type == "backoff":
+                raise Api503BackoffError(msg, resp_data)
+            elif self._context.retry_503_type == "random":
+                raise Api503RandomError(msg, resp_data)
+            else:
+                raise Api503RetryError(msg, resp_data)
         else:
             raise ApiError(msg, resp_data)
 
@@ -392,6 +439,7 @@ class ApiConnection(object):
             body = json.dumps(data)
         return body, headers
 
+    @_with_503_retry
     @_with_authentication
     def _do_auth_request(self, method, urlpath, files=None, data=None,
                          params=None, **kwargs):
@@ -419,6 +467,7 @@ class ApiConnection(object):
                 ret_metadata = parsed_data
         return ret_metadata, ret_data
 
+    @_with_503_retry
     @_with_authentication
     def _do_stream_request(self, urlpath, data=None, params=None, **kwargs):
         body, headers = self._build_body_headers(data=data, params=params)

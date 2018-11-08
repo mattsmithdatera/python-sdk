@@ -113,6 +113,18 @@ class ApiConflictError(_ApiResponseError):
     pass
 
 
+class Api503RetryError(_ApiResponseError):
+    """ The system is overloaded, retry in a bit """
+
+
+class Api503BackoffError(Api503RetryError):
+    """ The system is overloaded, retry with backoff sleep in a bit """
+
+
+class Api503RandomError(Api503RetryError):
+    """ The system is overloaded, retry with random sleep in a bit """
+
+
 ###############################################################################
 
 class SdkTypeNotFound(SdkError):
