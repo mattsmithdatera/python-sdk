@@ -70,24 +70,22 @@ def _with_503_retry(method):
     @functools.wraps(method)
     def _wrapper_503(self, *args, **kwargs):
         """ Call the original method with backoff """
-        timeout = TIMEOUT_503
+        tstart = time.time()
         backoff = 0
-        while timeout > 0:
+        while time.time() - tstart < TIMEOUT_503:
             try:
                 return method(self, *args, **kwargs)
             except Api503RandomError:
-                slp = random.random() * 10
+                slp = round(random.random() * 10, 2)
                 LOG.warn("Hit 503 Retry.  "
                          "Adding random sleep and trying again in "
                          "{}s".format(slp))
                 time.sleep(slp)
-                timeout -= slp
             except Api503BackoffError:
                 slp = 1 + (backoff * backoff)
                 LOG.warn("Hit 503 Retry.  "
                          "Backing off and trying again in {}s".format(slp))
                 time.sleep(slp)
-                timeout -= slp
 
         raise
     return _wrapper_503
