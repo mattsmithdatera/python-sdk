@@ -4,7 +4,7 @@ since many other modules import this one
 """
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-VERSION = "1.2.16"
+VERSION = "1.2.17"
 
 VERSION_HISTORY = """
 Version History:
@@ -34,6 +34,8 @@ Version History:
               scaffold, changed required requests version because of security
               vulnerability. Updated the readme.
     1.2.16 -- 503 retry support
+    1.2.17 -- Bugfix for issue that prevented older API versions from being
+              used
 """
 
 API_VERSIONS = ("v2", "v2.1", "v2.2")

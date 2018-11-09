@@ -268,7 +268,7 @@ def get_config():
 def get_argparser(add_help=True):
     global _ARGS, VERBOSE
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--api-version", default="v{}".format(LATEST),
+    parser.add_argument("--api-version",
                         help="Datera API version to use (default={})".format(
                             LATEST))
     parser.add_argument("--hostname", help="Hostname or IP Address of Datera "
