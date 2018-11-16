@@ -33,9 +33,6 @@ def _api_getter(base):
               timeout (float) - HTTP connection  timeout.  If None, use system
                                 default.
               secure (boolean) - Use HTTPS instead of HTTP, defaults to HTTPS
-              immediate_login (bool) - If True, login when this object is
-                                       instantiated, else wait to login until
-                                       a request is sent
               thread_local (dict) - Thread local dictionary with trace id
               ldap_server (string) - LDAP server
               extra_headers (dict) - Headers to pass along with all requests
@@ -51,76 +48,26 @@ def _api_getter(base):
             kwargs['username'] = username
             kwargs['password'] = password
             self._kwargs = kwargs
-            self._context = None
+            self.context = self._create_context(**kwargs)
+            super(_DateraBaseApi, self).__init__(self.context, None)
 
-            immediate_login = kwargs.get('immediate_login', True)
-            if immediate_login:
-                # Support both ways of specifying ldap server
-                lds = kwargs.get('remote_server', None)
-                if not lds:
-                    lds = kwargs.get('ldap_server', None)
-                self.context.connection.login(
-                    name=kwargs.get('username'),
-                    password=kwargs.get('password'),
-                    ldap_server=lds)
-
-            # Initialize sub-endpoints:
-            super(_DateraBaseApi, self).__init__(self._context, None)
-
-        @property
-        def context(self):
-            kwargs = self._kwargs
-            tenant = kwargs.get('tenant', None)
-            timeout = kwargs.get('timeout', DEFAULT_HTTP_TIMEOUT)
-            secure = kwargs.get('secure', True)
-            strict = kwargs.get('strict', True)
-            cert = kwargs.get('cert', None)
-            cert_key = kwargs.get('cert_key', None)
-            thread_local = kwargs.get('thread_local', threading.local())
-            retry_503_type = kwargs.get('retry_503_type', "backoff")
-
-            # Support both ways of specifying ldap server
-            lds = kwargs.get('remote_server', None)
-            if not lds:
-                lds = kwargs.get('ldap_server', None)
-            ldap_server = lds
-
-            extra_headers = kwargs.get('extra_headers', None)
-            if not ldap_server:
-                ldap_server = kwargs.get('ldap_server', None)
-            if not self._context:
-                self._context = ApiContext()
-                self.__create_context(
-                        self._context,
-                        kwargs['hostname'],
-                        username=kwargs['username'],
-                        password=kwargs['password'],
-                        tenant=tenant,
-                        timeout=timeout,
-                        secure=secure,
-                        version=self._version,
-                        strict=strict,
-                        cert=cert,
-                        cert_key=cert_key,
-                        thread_local=thread_local,
-                        ldap_server=ldap_server,
-                        extra_headers=extra_headers,
-                        retry_503_type=retry_503_type)
-            return self._context
-
-        @context.setter
-        def context(self, value):
-            self._context = value
-
-        # We really don't want this overridden.  It messes with
-        # initialization too much, thus the name-mangle
-        def __create_context(self, context, hostname, username=None,
-                             password=None, tenant=None, timeout=None,
-                             secure=True, version=DEFAULT_API_VERSION,
-                             strict=True, cert=None, cert_key=None,
-                             thread_local=threading.local(),
-                             ldap_server=None, extra_headers=None,
-                             retry_503_type=None):
+        @staticmethod
+        def _create_context(hostname=None,
+                            username=None,
+                            password=None,
+                            tenant=None,
+                            timeout=DEFAULT_HTTP_TIMEOUT,
+                            secure=True,
+                            version=DEFAULT_API_VERSION,
+                            strict=True,
+                            cert=None,
+                            cert_key=None,
+                            thread_local=threading.local(),
+                            remote_server=None,
+                            ldap_server=None,
+                            extra_headers=None,
+                            retry_503_type=None,
+                            immediate_login=True):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -129,6 +76,7 @@ def _api_getter(base):
             Note that this is responsible for creating a connection object,
             which is an attribute of the context object.
             """
+            context = ApiContext()
             context.version = version
 
             context.hostname = hostname
@@ -146,15 +94,19 @@ def _api_getter(base):
                 context.extra_headers = {
                     'Datera-Driver': 'Python-SDK-{}'.format(VERSION)}
             context.thread_local = thread_local
-            context.ldap_server = ldap_server
+            lds = remote_server
+            if not lds:
+                lds = ldap_server
+            context.ldap_server = lds
             context.retry_503_type = retry_503_type
-            context.connection = self._create_connection(context)
-
-        def _create_connection(self, context):
-            """
-            Creates the API connection object used to communicate over REST
-            """
-            return ApiConnection.from_context(context)
+            context.connection = ApiConnection.from_context(context)
+            # Support both ways of specifying ldap server
+            if immediate_login:
+                context.connection.login(
+                    name=username,
+                    password=password,
+                    ldap_server=lds)
+            return context
 
     return _DateraBaseApi
 

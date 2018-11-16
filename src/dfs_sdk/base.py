@@ -234,9 +234,6 @@ class Endpoint(object):
         if attr in self.__dict__:
             return self.__dict__[attr]
         else:
-            if not self.context.connection:
-                self.context.connection = self._create_connection(self.context)
-                self.context.connection.login()
             if (attr not in self.context.reader._ep_name_set
                     and self.context.strict):
                 raise SdkEndpointNotFound(

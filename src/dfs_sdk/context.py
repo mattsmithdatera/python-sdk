@@ -39,7 +39,10 @@ class ApiContext(object):
     @property
     def reader(self):
         if not self._reader:
-            # self.connection.login()
+            self.connection.login(
+                name=self.username,
+                password=self.password,
+                ldap_server=self.ldap_server)
             self._reader = self.connection.reader
         return self._reader
 

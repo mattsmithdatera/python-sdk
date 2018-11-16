@@ -27,8 +27,7 @@ def mock_api_21():
         ctxt_mock.username = "admin"
         ctxt_mock.password = "password"
         ctxt_mock._reader = mock.Mock()
-        con = ApiConnection(ctxt_mock)
-        # con.login = mock.Mock()
+        con = ApiConnection.from_context(ctxt_mock)
         resp_data = load_asset("api_endpoint_21.txt")
         http.side_effect = [({"key": "84c457eb414c4ab5a472292c4bc2b1c1",
                               "version": "v2.1"}, 200, "", {}),
@@ -36,7 +35,7 @@ def mock_api_21():
         con._http_connect_request = http
         ctxt_mock.connection = con
         ctxt_mock.reader._ep_name_set.__contains__ = lambda a, b: True
-        api._context = ctxt_mock
+        api.context = ctxt_mock
         yield api, http
     finally:
         try:
@@ -63,7 +62,6 @@ def mock_api_22():
         ctxt_mock.password = "password"
         ctxt_mock._reader = mock.Mock()
         con = ApiConnection(ctxt_mock)
-        # con.login = mock.Mock()
         resp_data = load_asset("api_endpoint_21.txt")
         http.side_effect = [({"key": "84c457eb414c4ab5a472292c4bc2b1c1",
                               "version": "v2.2"}, 200, "", {}),
@@ -71,7 +69,7 @@ def mock_api_22():
         con._http_connect_request = http
         ctxt_mock.connection = con
         ctxt_mock.reader._ep_name_set.__contains__ = lambda a, b: True
-        api._context = ctxt_mock
+        api.context = ctxt_mock
         yield api, http
     finally:
         try:

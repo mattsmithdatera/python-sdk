@@ -135,15 +135,16 @@ def _defaults():
         _CONFIG["ldap"] = ""
 
 
-def _read_config():
+def _read_config(config_file):
     global _CONFIG
-    if _ARGS and _ARGS.config:
-        config_file = _ARGS.config
-    else:
-        config_file = _search_config()
     if not config_file:
-        _CONFIG = _read_cinder_conf()
-    else:
+        if _ARGS and _ARGS.config:
+            config_file = _ARGS.config
+        else:
+            config_file = _search_config()
+            if not config_file:
+                _CONFIG = _read_cinder_conf()
+    if config_file:
         with io.open(config_file) as f:
             _CONFIG = json.loads(f.read())
     if _CONFIG is None:
@@ -232,7 +233,10 @@ def vprint(*args, **kwargs):
 
 
 def get_api(**kwargs):
-    _read_config()
+    global _CONFIG
+    if kwargs.pop('reset_config', False):
+        _CONFIG = None
+    _read_config(kwargs.pop('config', None))
     tenant = _CONFIG["tenant"]
     if tenant and "root" not in tenant and tenant != "all":
         tenant = "/root/{}".format(tenant)
@@ -243,12 +247,10 @@ def get_api(**kwargs):
     else:
         version = "v{}".format(_CONFIG["api_version"].strip("v"))
     return _get_api(_CONFIG["mgmt_ip"],
-                    _CONFIG["username"],
-                    _CONFIG["password"],
-                    version,
+                    username=_CONFIG["username"],
+                    password=_CONFIG["password"],
+                    version=version,
                     tenant=tenant,
-                    secure=True,
-                    immediate_login=True,
                     remote_server=_CONFIG["ldap"],
                     **kwargs)
 
@@ -259,9 +261,12 @@ def print_config():
     pprint.pprint(config)
 
 
-def get_config():
+def get_config(config_file=None, **kwargs):
+    global _CONFIG
+    if kwargs.get('reset_config'):
+        _CONFIG = None
     if not _CONFIG:
-        _read_config()
+        _read_config(config_file)
     return copy.deepcopy(_CONFIG)
 
 
