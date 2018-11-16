@@ -390,9 +390,10 @@ class ApiConnection(object):
 
                 offset += resp_meta["metadata"]["limit"]
                 next_offset = {"offset": offset}
+                params.update(next_offset)
                 resp_meta, resp_data_container = \
                     self._do_auth_request(
-                        method, urlpath, data, params=next_offset)
+                        method, urlpath, data, params=params)
                 # Expanding the result
                 if isinstance(resp_data, dict):
                     resp_data.update(resp_data_container)
