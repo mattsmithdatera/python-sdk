@@ -4,7 +4,7 @@ since many other modules import this one
 """
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-VERSION = "1.2.17"
+VERSION = "1.2.18"
 
 VERSION_HISTORY = """
 Version History:
@@ -36,6 +36,8 @@ Version History:
     1.2.16 -- 503 retry support
     1.2.17 -- Bugfix for issue that prevented older API versions from being
               used
+    1.2.18 -- Added TLS verification support.  Fixed bug where params were not
+              preserved during accumulation.
 """
 
 API_VERSIONS = ("v2", "v2.1", "v2.2")
