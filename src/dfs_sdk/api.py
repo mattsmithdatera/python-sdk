@@ -67,7 +67,8 @@ def _api_getter(base):
                             ldap_server=None,
                             extra_headers=None,
                             retry_503_type=None,
-                            immediate_login=True):
+                            immediate_login=True,
+                            verify=False):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -90,6 +91,7 @@ def _api_getter(base):
             context.cert = cert
             context.cert_key = cert_key
             context.extra_headers = extra_headers
+            context.verify = verify
             if not extra_headers:
                 context.extra_headers = {
                     'Datera-Driver': 'Python-SDK-{}'.format(VERSION)}

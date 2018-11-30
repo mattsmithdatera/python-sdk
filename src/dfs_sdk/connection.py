@@ -128,6 +128,7 @@ class ApiConnection(object):
         self._timeout = context.timeout
         self._ldap_server = context.ldap_server
         self._extra_headers = context.extra_headers
+        self._verify = context.verify
 
         self._lock = threading.Lock()
         self._key = None
@@ -143,7 +144,8 @@ class ApiConnection(object):
         if self._secure:
             protocol = 'https'
             port = REST_PORT_HTTPS
-            cert_data = (self._cert, self._cert_key)
+            cert_data = ((self._cert, self._cert_key)
+                         if self._cert_key else self._cert)
         else:
             protocol = 'http'
             port = REST_PORT
@@ -184,7 +186,8 @@ class ApiConnection(object):
         try:
             resp = getattr(requests, method.lower())(
                     connection_string, headers=headers, params=params,
-                    data=body, verify=False, files=files, cert=cert_data)
+                    data=body, verify=self._verify, files=files,
+                    cert=cert_data)
             if sensitive or '/api' in resp.url:
                 payload = "*********"
             else:

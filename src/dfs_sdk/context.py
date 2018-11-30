@@ -30,6 +30,7 @@ class ApiContext(object):
         self.ldap_server = None
         self.retry_503_type = None
         self.extra_headers = {}
+        self.verify = None
 
         self.on_entity_create_hooks = []
         self.on_entity_delete_hooks = []
