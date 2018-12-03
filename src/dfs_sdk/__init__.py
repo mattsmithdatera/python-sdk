@@ -51,7 +51,7 @@ def get_api(hostname, username, password, version, tenant=None, strict=True,
       hooks (list) - List of hook instances use (see dfs_sdk/hooks/base.py)
       refresh (bool) - Re-generate .cached-schema file from /api endpoint
     """
-    setup_logging(kwargs.get('disable_log', False))
+    setup_logging(kwargs.pop('disable_log', False))
     if version not in API_VERSIONS:
         raise ValueError(
             "API version {} unsupported by SDK at this time. Supported "
