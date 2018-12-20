@@ -47,6 +47,7 @@ def _api_getter(base):
             kwargs['hostname'] = hostname
             kwargs['username'] = username
             kwargs['password'] = password
+            kwargs['version'] = self._version
             self._kwargs = kwargs
             self.context = self._create_context(**kwargs)
             super(_DateraBaseApi, self).__init__(self.context, None)
