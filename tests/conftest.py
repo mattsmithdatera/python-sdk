@@ -5,7 +5,7 @@ import pytest
 
 from dfs_sdk import get_api
 from dfs_sdk.connection import ApiConnection
-from dfs_sdk.connection import CACHED_SCHEMA
+from dfs_sdk.connection import DEFAULT_CACHED_SCHEMA
 from dfs_sdk.context import ApiContext
 from tests.utils import load_asset
 
@@ -39,7 +39,7 @@ def mock_api_21():
         yield api, http
     finally:
         try:
-            os.remove(CACHED_SCHEMA)
+            os.remove(DEFAULT_CACHED_SCHEMA)
         except OSError:
             pass
 
@@ -73,6 +73,6 @@ def mock_api_22():
         yield api, http
     finally:
         try:
-            os.remove(CACHED_SCHEMA)
+            os.remove(DEFAULT_CACHED_SCHEMA)
         except OSError:
             pass

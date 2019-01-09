@@ -21,7 +21,7 @@ from .exceptions import Api503BackoffError, Api503RandomError
 from .exceptions import Api503RetryError
 from .exceptions import ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
-from .constants import VERSION, CACHED_SCHEMA, TIMEOUT_503
+from .constants import VERSION, TIMEOUT_503
 from .dlogging import get_log
 from .schema.reader import get_reader
 
@@ -233,8 +233,8 @@ class ApiConnection(object):
         from the remote box.
         """
         data = None
-        if os.path.exists(CACHED_SCHEMA):
-            with io.open(CACHED_SCHEMA, 'rb') as f:
+        if os.path.exists(self._context.schema_loc):
+            with io.open(self._context.schema_loc, 'rb') as f:
                 fdata = f.read()
                 data = {}
                 if fdata:
@@ -253,7 +253,7 @@ class ApiConnection(object):
             # Making it sensitive so it doesn't clog the logs
             data = {self._version: self.read_endpoint(endpoint,
                                                       sensitive=True)}
-        with io.open(CACHED_SCHEMA, 'wb+') as f:
+        with io.open(self._context.schema_loc, 'wb+') as f:
             jdata = json.dumps(data)
             try:
                 # Python 2.7

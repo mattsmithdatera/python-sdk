@@ -3,7 +3,7 @@ Provides the DateraApi objects
 """
 import threading
 
-from .constants import DEFAULT_HTTP_TIMEOUT, VERSION
+from .constants import DEFAULT_HTTP_TIMEOUT, VERSION, DEFAULT_CACHED_SCHEMA
 from .connection import ApiConnection
 from .context import ApiContext
 from .base import Endpoint as _Endpoint
@@ -29,13 +29,6 @@ def _api_getter(base):
               hostname (str) - IP address or host name
               username (str) - Username to log in with, e.g. "admin"
               password (str) - Password to use when logging in to the cluster
-              tenant (str) - Tenant, or None
-              timeout (float) - HTTP connection  timeout.  If None, use system
-                                default.
-              secure (boolean) - Use HTTPS instead of HTTP, defaults to HTTPS
-              thread_local (dict) - Thread local dictionary with trace id
-              ldap_server (string) - LDAP server
-              extra_headers (dict) - Headers to pass along with all requests
             """
             assert self._version is not None
 
@@ -69,7 +62,8 @@ def _api_getter(base):
                             extra_headers=None,
                             retry_503_type=None,
                             immediate_login=True,
-                            verify=False):
+                            verify=False,
+                            schema_loc=DEFAULT_CACHED_SCHEMA):
             """
             Creates the context object
             This will be attached as a private attribute to all entities
@@ -93,6 +87,7 @@ def _api_getter(base):
             context.cert_key = cert_key
             context.extra_headers = extra_headers
             context.verify = verify
+            context.schema_loc = schema_loc
             if not extra_headers:
                 context.extra_headers = {
                     'Datera-Driver': 'Python-SDK-{}'.format(VERSION)}
