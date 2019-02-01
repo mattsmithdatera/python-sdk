@@ -5,7 +5,7 @@ import pytest
 
 from dfs_sdk import get_api
 from dfs_sdk.connection import ApiConnection
-from dfs_sdk.connection import DEFAULT_CACHED_SCHEMA
+from dfs_sdk.constants import DEFAULT_CACHED_SCHEMA
 from dfs_sdk.context import ApiContext
 from tests.utils import load_asset
 
@@ -26,6 +26,7 @@ def mock_api_21():
         ctxt_mock.version = "v2.1"
         ctxt_mock.username = "admin"
         ctxt_mock.password = "password"
+        ctxt_mock.schema_loc = DEFAULT_CACHED_SCHEMA
         ctxt_mock._reader = mock.Mock()
         con = ApiConnection.from_context(ctxt_mock)
         resp_data = load_asset("api_endpoint_21.txt")

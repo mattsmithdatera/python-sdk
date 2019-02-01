@@ -21,7 +21,7 @@ def test_get_api():
             immediate_login=False)
     get_api("1.1.1.1", "admin", "password", "v2.1", timeout=0.01,
             immediate_login=False)
-    with pytest.raises(ValueError):
+    with pytest.raises(NotImplementedError):
         get_api("1.1.1.1", "admin", "password", "v1.0", timeout=0.01,
                 immediate_login=False)
 

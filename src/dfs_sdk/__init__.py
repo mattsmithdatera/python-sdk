@@ -66,7 +66,7 @@ def get_api(hostname, username, password, version, tenant=None, strict=True,
     setup_logging(kwargs.pop('disable_log', False))
     schema_loc = kwargs.get('schema_loc', DEFAULT_CACHED_SCHEMA)
     if version not in API_VERSIONS:
-        raise ValueError(
+        raise NotImplementedError(
             "API version {} unsupported by SDK at this time. Supported "
             "versions: {}".format(version, API_VERSIONS))
     if version == "v2" and tenant:
