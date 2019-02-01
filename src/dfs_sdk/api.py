@@ -7,11 +7,12 @@ from .constants import DEFAULT_HTTP_TIMEOUT, VERSION, DEFAULT_CACHED_SCHEMA
 from .connection import ApiConnection
 from .context import ApiContext
 from .base import Endpoint as _Endpoint
+from .dlogging import get_log
 
 __copyright__ = "Copyright 2017, Datera, Inc."
 
-
 DEFAULT_API_VERSION = "v2.1"
+LOG = get_log(__name__)
 
 
 # Wrapper function to help deduplicate all the code we were getting with the
@@ -117,6 +118,16 @@ class RootEp(_Endpoint):
 
     def __init__(self, *args):
         super(RootEp, self).__init__(*args)
+
+    def healthcheck(self):
+        try:
+            self.storage_nodes.list()
+            LOG.debug("Connected to cluster: {} with tenant {}.".format(
+                self.context.hostname, self.context.tenant))
+            return True
+        except Exception as e:
+            LOG.error("Healthcheck failed: {}".format(e))
+            return False
 
 
 class DateraApi(_api_getter(RootEp)):
