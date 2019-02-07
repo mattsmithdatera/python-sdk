@@ -288,9 +288,12 @@ class Endpoint(object):
     def _new_contained_entity(self, data):
         """ Creates an Entity object """
         name = data.get('name')
+        path = self._path
+        if not name and 'key' in data:
+            path = os.path.join(self._path, data['key'])
         if not name:
             name = snake_to_camel(self._name + "_entity")
-        entity = self._entity_cls(self.context, data, name, self._path)
+        entity = self._entity_cls(self.context, data, name, path)
         entity = self.context.prepare_entity(entity)
         return entity
 
