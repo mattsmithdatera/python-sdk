@@ -44,7 +44,7 @@ number of ways:
       "username": "admin",
       "password": "password",
       "tenant": "/root",
-      "api_version": "2.2"'
+      "api_version": "2.2",
       "ldap": ""}
 ```
 * The file can be in any of the following places.  This is also the lookup
