@@ -34,6 +34,16 @@ class ApiConnectionError(ApiError):
     pass
 
 
+class ApiConnectionBackoffError(ApiConnectionError):
+    """ The system is unreachable, retry with backoff """
+    pass
+
+
+class ApiConnectionRandomError(ApiConnectionError):
+    """ The system is unreachable, retry with random sleep """
+    pass
+
+
 class ApiTimeoutError(ApiConnectionError):
     """ Timeout waiting for a response """
     pass
@@ -86,9 +96,7 @@ class ApiInternalError(_ApiResponseError):
 
 class ApiUnavailableError(_ApiResponseError):
     """
-    HTTP 503, indicating that the REST server is having a transient error
-    communicating with the backend.
-    This is a temporary error, e.g. during a node failover or node install.
+    Error indicating the API version request is not available on this system
     """
     pass
 

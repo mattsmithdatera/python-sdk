@@ -59,6 +59,7 @@ def get_api(hostname, username, password, version, tenant=None, strict=True,
       thread_local (dict) - Thread local dictionary with trace id
       ldap_server (string) - LDAP server
       retry_503_type (string) - "backoff" or "random"
+      retry_connection_type (string) - "backoff" or "random"
       immediate_login (bool) - Login to Datera cluster when object is returned
       verify (bool) - Verify HTTPS connection (
                       currently unsupported by Datera cluster)

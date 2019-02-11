@@ -61,7 +61,8 @@ def _api_getter(base):
                             remote_server=None,
                             ldap_server=None,
                             extra_headers=None,
-                            retry_503_type=None,
+                            retry_503_type="backoff",
+                            retry_connection_type="backoff",
                             immediate_login=True,
                             verify=False,
                             schema_loc=DEFAULT_CACHED_SCHEMA):
@@ -98,6 +99,7 @@ def _api_getter(base):
                 lds = ldap_server
             context.ldap_server = lds
             context.retry_503_type = retry_503_type
+            context.retry_connection_type = retry_connection_type
             context.connection = ApiConnection.from_context(context)
             # Support both ways of specifying ldap server
             if immediate_login:

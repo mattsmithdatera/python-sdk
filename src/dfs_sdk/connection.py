@@ -18,10 +18,11 @@ from .exceptions import ApiAuthError, ApiConnectionError, ApiTimeoutError
 from .exceptions import ApiInternalError, ApiNotFoundError
 from .exceptions import ApiInvalidRequestError, ApiConflictError
 from .exceptions import Api503BackoffError, Api503RandomError
-from .exceptions import Api503RetryError
+from .exceptions import Api503RetryError, ApiConnectionRandomError
+from .exceptions import ApiConnectionBackoffError
 from .exceptions import ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
-from .constants import VERSION, TIMEOUT_503
+from .constants import VERSION, RETRY_TIMEOUT
 from .dlogging import get_log
 from .schema.reader import get_reader
 
@@ -31,7 +32,6 @@ LOG = get_log(__name__)
 
 # TODO(_alastor_): Add certificate verification
 urllib3.disable_warnings()
-retry_type = "backoff"
 
 
 def _with_authentication(method):
@@ -63,16 +63,16 @@ def _with_authentication(method):
     return wrapper_method
 
 
-def _with_503_retry(method):
+def _with_retry(method):
     """
     Decorator to wrap Api method calls so we retry on 503 errors
     """
     @functools.wraps(method)
-    def _wrapper_503(self, *args, **kwargs):
+    def _wrapper_retry(self, *args, **kwargs):
         """ Call the original method with backoff """
         tstart = time.time()
         backoff = 0
-        while time.time() - tstart < TIMEOUT_503:
+        while time.time() - tstart < RETRY_TIMEOUT:
             try:
                 return method(self, *args, **kwargs)
             except Api503RandomError:
@@ -86,9 +86,19 @@ def _with_503_retry(method):
                 LOG.warn("Hit 503 Retry.  "
                          "Backing off and trying again in {}s".format(slp))
                 time.sleep(slp)
+            except ApiConnectionRandomError as e:
+                slp = round(random.random() * 10, 2)
+                LOG.warn("Hit Connection Error: {} Backing off and trying "
+                         "again in {}s".format(e))
+                time.sleep(slp)
+            except ApiConnectionBackoffError as e:
+                slp = 1 + (backoff * backoff)
+                LOG.warn("Hit Connection Error: {} Backing off and trying "
+                         "again in {}s".format(e))
+                time.sleep(slp)
 
         raise
-    return _wrapper_503
+    return _wrapper_retry
 
 
 def _make_unicode_string(inval):
@@ -137,7 +147,6 @@ class ApiConnection(object):
 
     @classmethod
     def from_context(cls, context):
-        cls.RETRY_TYPE = context.retry_503_type
         return cls(context)
 
     def _get_request_attrs(self, urlpath):
@@ -213,7 +222,12 @@ class ApiConnection(object):
                        'payload': payload,
                        'obj': None})
         except requests.ConnectionError as e:
-            raise ApiConnectionError(e, '')
+            if self._context.retry_connection_type == "backoff":
+                raise ApiConnectionBackoffError(e, '')
+            elif self._context.retry_connection_type == "random":
+                raise ApiConnectionRandomError(e, '')
+            else:
+                raise ApiConnectionError(e, '')
         except requests.Timeout as e:
             raise ApiTimeoutError(e, '')
         if files:
@@ -263,7 +277,7 @@ class ApiConnection(object):
                 f.write(jdata.encode('utf-8'))
         return data[self._version]
 
-    @_with_503_retry
+    @_with_retry
     def login(self, **params):
         """ Login to the API, store the key, get schema """
         if params:
@@ -441,7 +455,7 @@ class ApiConnection(object):
             body = json.dumps(data)
         return body, headers
 
-    @_with_503_retry
+    @_with_retry
     @_with_authentication
     def _do_auth_request(self, method, urlpath, files=None, data=None,
                          params=None, **kwargs):
@@ -469,7 +483,7 @@ class ApiConnection(object):
                 ret_metadata = parsed_data
         return ret_metadata, ret_data
 
-    @_with_503_retry
+    @_with_retry
     @_with_authentication
     def _do_stream_request(self, urlpath, data=None, params=None, **kwargs):
         body, headers = self._build_body_headers(data=data, params=params)

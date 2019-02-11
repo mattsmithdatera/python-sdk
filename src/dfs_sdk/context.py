@@ -29,6 +29,7 @@ class ApiContext(object):
         self.thread_local = None
         self.ldap_server = None
         self.retry_503_type = None
+        self.retry_connection_type = None
         self.extra_headers = {}
         self.verify = None
         self.schema_loc = None
