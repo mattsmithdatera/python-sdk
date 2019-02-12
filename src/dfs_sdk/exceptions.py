@@ -34,16 +34,6 @@ class ApiConnectionError(ApiError):
     pass
 
 
-class ApiConnectionBackoffError(ApiConnectionError):
-    """ The system is unreachable, retry with backoff """
-    pass
-
-
-class ApiConnectionRandomError(ApiConnectionError):
-    """ The system is unreachable, retry with random sleep """
-    pass
-
-
 class ApiTimeoutError(ApiConnectionError):
     """ Timeout waiting for a response """
     pass
@@ -123,14 +113,6 @@ class ApiConflictError(_ApiResponseError):
 
 class Api503RetryError(_ApiResponseError):
     """ The system is overloaded, retry in a bit """
-
-
-class Api503BackoffError(Api503RetryError):
-    """ The system is overloaded, retry with backoff sleep in a bit """
-
-
-class Api503RandomError(Api503RetryError):
-    """ The system is overloaded, retry with random sleep in a bit """
 
 
 ###############################################################################

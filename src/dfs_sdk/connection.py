@@ -17,10 +17,7 @@ from .exceptions import ApiError
 from .exceptions import ApiAuthError, ApiConnectionError, ApiTimeoutError
 from .exceptions import ApiInternalError, ApiNotFoundError
 from .exceptions import ApiInvalidRequestError, ApiConflictError
-from .exceptions import Api503BackoffError, Api503RandomError
-from .exceptions import Api503RetryError, ApiConnectionRandomError
-from .exceptions import ApiConnectionBackoffError
-from .exceptions import ApiValidationFailedError
+from .exceptions import Api503RetryError, ApiValidationFailedError
 from .constants import REST_PORT, REST_PORT_HTTPS
 from .constants import VERSION, RETRY_TIMEOUT
 from .dlogging import get_log
@@ -72,32 +69,43 @@ def _with_retry(method):
         """ Call the original method with backoff """
         tstart = time.time()
         backoff = 0
+        err = None
         while time.time() - tstart < RETRY_TIMEOUT:
             try:
                 return method(self, *args, **kwargs)
-            except Api503RandomError:
-                slp = round(random.random() * 10, 2)
-                LOG.warn("Hit 503 Retry.  "
-                         "Adding random sleep and trying again in "
-                         "{}s".format(slp))
-                time.sleep(slp)
-            except Api503BackoffError:
-                slp = 1 + (backoff * backoff)
-                LOG.warn("Hit 503 Retry.  "
-                         "Backing off and trying again in {}s".format(slp))
-                time.sleep(slp)
-            except ApiConnectionRandomError as e:
-                slp = round(random.random() * 10, 2)
-                LOG.warn("Hit Connection Error: {} Backing off and trying "
-                         "again in {}s".format(e))
-                time.sleep(slp)
-            except ApiConnectionBackoffError as e:
-                slp = 1 + (backoff * backoff)
-                LOG.warn("Hit Connection Error: {} Backing off and trying "
-                         "again in {}s".format(e))
-                time.sleep(slp)
-
-        raise
+            except Api503RetryError as e:
+                if self._context.retry_503_type == "random":
+                    err = e
+                    slp = round(random.random() * 10, 2)
+                    LOG.warn("Hit 503 Retry.  "
+                             "Adding random sleep and trying again in "
+                             "{}s".format(slp))
+                    time.sleep(slp)
+                elif self._context.retry_503_type == "backoff":
+                    err = e
+                    slp = 1 + (backoff * backoff)
+                    LOG.warn("Hit 503 Retry.  "
+                             "Backing off and trying again in {}s".format(slp))
+                    time.sleep(slp)
+                else:
+                    raise
+            except ApiConnectionError as e:
+                if self._context.retry_connection_type == "random":
+                    err = e
+                    slp = round(random.random() * 10, 2)
+                    LOG.warn("Hit Connection Error: {} Backing off and trying "
+                             "again in {}s".format(e, slp))
+                    time.sleep(slp)
+                elif self._context.retry_connection_type == "backoff":
+                    err = e
+                    slp = 1 + (backoff * backoff)
+                    LOG.warn("Hit Connection Error: {} Backing off and trying "
+                             "again in {}s".format(e, slp))
+                    time.sleep(slp)
+                else:
+                    raise
+        raise ApiTimeoutError("Request never succeeded before timeout period "
+                              "expired: {}".format(err))
     return _wrapper_retry
 
 
@@ -222,12 +230,7 @@ class ApiConnection(object):
                        'payload': payload,
                        'obj': None})
         except requests.ConnectionError as e:
-            if self._context.retry_connection_type == "backoff":
-                raise ApiConnectionBackoffError(e, '')
-            elif self._context.retry_connection_type == "random":
-                raise ApiConnectionRandomError(e, '')
-            else:
-                raise ApiConnectionError(e, '')
+            raise ApiConnectionError(e, '')
         except requests.Timeout as e:
             raise ApiTimeoutError(e, '')
         if files:
@@ -362,14 +365,12 @@ class ApiConnection(object):
         elif resp_status == 409:
             raise ApiConflictError(msg, resp_data)
         elif resp_status == 500:
+            if 'REST server is still initializing' in resp_data.get(
+                    'message', ''):
+                raise Api503RetryError(msg, resp_data)
             raise ApiInternalError(msg, resp_data)
         elif resp_status == 503:
-            if self._context.retry_503_type == "backoff":
-                raise Api503BackoffError(msg, resp_data)
-            elif self._context.retry_503_type == "random":
-                raise Api503RandomError(msg, resp_data)
-            else:
-                raise Api503RetryError(msg, resp_data)
+            raise Api503RetryError(msg, resp_data)
         else:
             raise ApiError(msg, resp_data)
 
