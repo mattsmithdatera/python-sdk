@@ -33,7 +33,8 @@ CONFIGS = [".datera-config", "datera-config", ".datera-config.json",
            "datera-config.json"]
 CINDER_ETC = "/etc/cinder/cinder.conf"
 
-EXAMPLE_CONFIG = {"mgmt_ip": "1.1.1.1",
+REPLACE_IP = "REPLACE_ME_WITH_REAL_IP_OR_HOSTNAME"
+EXAMPLE_CONFIG = {"mgmt_ip": REPLACE_IP,
                   "username": "admin",
                   "password": "password",
                   "tenant": "/root",
@@ -153,6 +154,7 @@ def _read_config(config_file):
     _cli_override()
     _defaults()
     _check_config(config_file)
+    return config_file
 
 
 def _read_cinder_conf():
@@ -236,7 +238,7 @@ def get_api(**kwargs):
     global _CONFIG
     if kwargs.pop('reset_config', False):
         _CONFIG = None
-    _read_config(kwargs.pop('config', None))
+    udc_file = _read_config(kwargs.pop('config', None))
     tenant = _CONFIG["tenant"]
     if tenant and "root" not in tenant and tenant != "all":
         tenant = "/root/{}".format(tenant)
@@ -246,6 +248,13 @@ def get_api(**kwargs):
         version = "v{}".format(LATEST)
     else:
         version = "v{}".format(_CONFIG["api_version"].strip("v"))
+    # Check that mgmt_ip isn't the default
+    if _CONFIG["mgmt_ip"] == REPLACE_IP:
+        if not udc_file:
+            udc_file = "none found"
+        raise ValueError("You must edit your UDC config file [{}] and provide "
+                         "at least the mgmt_ip of the Datera box you want to "
+                         "connect to".format(udc_file))
     return _get_api(_CONFIG["mgmt_ip"],
                     username=_CONFIG["username"],
                     password=_CONFIG["password"],
