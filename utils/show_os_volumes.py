@@ -85,6 +85,11 @@ def main(args):
         for ai_name in sorted(non_os):
             if ai_name.startswith("OS-"):
                 print(ai_name)
+    elif args.only_cached_images:
+        for ai_name in sorted(non_os):
+            ai = api.app_instances.get(ai_name)
+            if ai.metadata.get().get('type') == 'cached_image':
+                print(ai_name)
     else:
         print("OpenStack Project:", pdisplay)
         print("Datera Tenant: ", scaffold.get_config()["tenant"])
@@ -104,6 +109,6 @@ if __name__ == "__main__":
     parser = scaffold.get_argparser()
     parser.add_argument('--all-projects-all-tenants', action='store_true')
     parser.add_argument('--only-os-orphans', action='store_true')
-    # parser.add_argument('--only-cached-images', action='store_true')
+    parser.add_argument('--only-cached-images', action='store_true')
     args = parser.parse_args()
     sys.exit(main(args))
