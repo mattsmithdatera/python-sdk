@@ -1,6 +1,7 @@
 """
 Provides the ApiConnection class
 """
+import copy
 import functools
 import io
 import json
@@ -43,11 +44,11 @@ def _with_authentication(method):
         if not self._logged_in:
             LOG.debug("Log in to API...")
             self.login()
-            return method(self, *args, **kwargs)
+            return method(self, *copy.deepcopy(args), **copy.deepcopy(kwargs))
         # already logged in, but retry if needed in case the key expires:
+        args_copy = copy.deepcopy(args)
+        kwargs_copy = copy.deepcopy(kwargs)
         try:
-            args_copy = tuple(args)
-            kwargs_copy = dict(kwargs)
             return method(self, *args, **kwargs)
         except ApiAuthError as e:
             if e.message == ('The key provided with the request does not '
@@ -72,7 +73,8 @@ def _with_retry(method):
         err = None
         while time.time() - tstart < RETRY_TIMEOUT:
             try:
-                return method(self, *args, **kwargs)
+                return method(
+                    self, *copy.deepcopy(args), **copy.deepcopy(kwargs))
             except Api503RetryError as e:
                 if self._context.retry_503_type == "random":
                     err = e
